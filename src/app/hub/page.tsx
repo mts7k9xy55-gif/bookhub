@@ -1,8 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Languages, Loader2, Key, BookOpen, PenLine } from 'lucide-react';
+import { ArrowLeft, Languages, Loader2, Key, BookOpen, PenLine, Upload } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
@@ -103,6 +103,7 @@ export default function Hub() {
   const [apiKey, setApiKey] = useState('');
   const [hasKey, setHasKey] = useState(false);
   const [randomBooks, setRandomBooks] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key');
@@ -115,6 +116,35 @@ export default function Hub() {
 
   const handleSaveKey = () => {
     if (apiKey.trim()) { localStorage.setItem('gemini_api_key', apiKey); setHasKey(true); }
+  };
+
+  const handleLocalImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsTranslating('Importing Local Book...');
+    try {
+      const text = await file.text();
+      // Split into basic paragraphs for the editor
+      const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
+      const finalHtml = paragraphs.map(p => `<p>${p.replace(/\n/g, ' ')}</p>`).join('');
+      
+      const title = file.name.replace(/\.[^/.]+$/, ""); // remove extension
+
+      await db.drafts.add({ 
+        title: title, 
+        author: 'Local File', 
+        content: `<h1>${title}</h1>` + finalHtml,
+        updatedAt: new Date(), 
+        isCommitted: false 
+      });
+      router.push('/');
+    } catch (error) {
+      alert("Failed to read file.");
+    } finally {
+      setIsTranslating(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const translateChunk = async (text: string, currentKey: string) => {
@@ -171,17 +201,33 @@ export default function Hub() {
     <main className="min-h-screen bg-[#FAFAFA] p-8 sm:p-16 text-[#1a1a1a] font-sans selection:bg-gray-200 flex flex-col items-center">
       <div className="w-full max-w-5xl">
         <header className="flex justify-between items-center mb-24 opacity-30 hover:opacity-100 transition-opacity duration-500">
-          <Link href="/" className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors">
+          <Link href="/" className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors" title="Back to Editor">
             <ArrowLeft strokeWidth={1.5} size={20} />
           </Link>
           
-          <div className="flex items-center">
+          <div className="flex items-center gap-6">
             {!hasKey && (
               <div className="flex items-center border-b border-black/10 pb-1">
                 <input type="password" placeholder="Key" className="bg-transparent text-[10px] focus:outline-none w-16 tracking-widest text-center" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
                 <button onClick={handleSaveKey} className="ml-2 hover:text-black transition-colors"><Key size={12} /></button>
               </div>
             )}
+            
+            {/* Local Import Button */}
+            <button 
+              onClick={() => fileInputRef.current?.click()} 
+              className="flex items-center gap-2 p-2 rounded-full hover:bg-black/5 transition-colors"
+              title="Import Local Text File (.txt, .md)"
+            >
+              <Upload strokeWidth={1.5} size={20} />
+            </button>
+            <input 
+              type="file" 
+              accept=".txt,.md" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              onChange={handleLocalImport} 
+            />
           </div>
         </header>
 
