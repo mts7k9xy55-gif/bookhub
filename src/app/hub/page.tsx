@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, GitFork, Search, Languages, Loader2, Key, BookOpen, PenTool } from 'lucide-react';
+import { ArrowLeft, Languages, Loader2, Key, BookOpen, PenLine } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
@@ -56,46 +56,41 @@ const getGradient = (title: string) => {
   const hash = Array.from(title).reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0);
   const hue1 = Math.abs(hash % 360);
   const hue2 = (hue1 + 40 + Math.abs((hash >> 8) % 60)) % 360;
-  return `linear-gradient(135deg, hsl(${hue1}, 20%, 30%), hsl(${hue2}, 30%, 15%))`;
+  return `linear-gradient(135deg, hsl(${hue1}, 10%, 40%), hsl(${hue2}, 15%, 20%))`;
 };
 
-function BookCard({ book, onFork, isTranslating }: { book: any, onFork: (book: any, translate: boolean) => void, isTranslating: boolean }) {
+function BookCard({ book, onOpen, isTranslating }: { book: any, onOpen: (book: any, translate: boolean) => void, isTranslating: boolean }) {
   const gradient = getGradient(book.title);
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col group cursor-pointer relative h-full">
       <div 
-        className="aspect-[2/3] w-full rounded-md shadow-md group-hover:shadow-xl transition-all duration-500 relative overflow-hidden flex flex-col p-5 border border-white/10 group-hover:-translate-y-1"
+        className="aspect-[2/3] w-full rounded-sm shadow-md group-hover:shadow-2xl transition-all duration-700 relative overflow-hidden flex flex-col p-6 border border-white/5 group-hover:-translate-y-2"
         style={{ background: gradient }}
       >
-        <div className="flex-1 flex flex-col items-center justify-between text-center relative z-10 py-2 border border-white/10 rounded-sm">
-          <p className="text-[9px] font-medium tracking-[0.2em] uppercase text-white/70 px-2 line-clamp-2">{book.author}</p>
-          <h3 className="text-sm md:text-base font-serif italic text-white/90 leading-snug px-3 line-clamp-4 shadow-black drop-shadow-sm">{book.title}</h3>
-          <div className="w-6 h-[1px] bg-white/30" />
+        <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10 space-y-4">
+          <p className="text-[8px] font-medium tracking-[0.3em] uppercase text-white/50">{book.author}</p>
+          <h3 className="text-sm md:text-base font-serif italic text-white/90 leading-snug line-clamp-4 drop-shadow-sm">{book.title}</h3>
         </div>
 
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center space-y-3 z-30">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center space-x-6 z-30">
           <button 
-            onClick={(e) => { e.stopPropagation(); onFork(book, true); }} 
+            onClick={(e) => { e.stopPropagation(); onOpen(book, false); }} 
             disabled={isTranslating} 
-            className="text-[10px] font-bold tracking-widest uppercase bg-white text-black px-6 py-2.5 rounded-full hover:scale-105 active:scale-95 transition-transform disabled:opacity-50 flex items-center space-x-2 w-32 justify-center"
+            title="Open"
+            className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
           >
-            <Languages size={14} />
-            <span>Translate</span>
+            <PenLine strokeWidth={1.5} size={22} />
           </button>
           <button 
-            onClick={(e) => { e.stopPropagation(); onFork(book, false); }} 
+            onClick={(e) => { e.stopPropagation(); onOpen(book, true); }} 
             disabled={isTranslating} 
-            className="text-[10px] font-bold tracking-widest uppercase border border-white text-white px-6 py-2.5 rounded-full hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50 flex items-center space-x-2 w-32 justify-center"
+            title="Translate"
+            className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
           >
-            <GitFork size={14} />
-            <span>Fork</span>
+            <Languages strokeWidth={1.5} size={22} />
           </button>
         </div>
-      </div>
-      
-      <div className="mt-4 flex flex-col items-center text-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 absolute -bottom-8 left-0 right-0">
-        <span className="text-[9px] font-medium text-gray-400 tracking-widest uppercase">Source Text</span>
       </div>
     </motion.div>
   );
@@ -103,15 +98,19 @@ function BookCard({ book, onFork, isTranslating }: { book: any, onFork: (book: a
 
 export default function Hub() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
   const [isTranslating, setIsTranslating] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [apiKey, setApiKey] = useState('');
   const [hasKey, setHasKey] = useState(false);
+  const [randomBooks, setRandomBooks] = useState<any[]>([]);
 
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key');
     if (savedKey) { setApiKey(savedKey); setHasKey(true); }
+    
+    // Shuffle and pick 12 random books on client side to avoid hydration mismatch
+    const shuffled = [...STANDARD_EBOOKS].sort(() => 0.5 - Math.random());
+    setRandomBooks(shuffled.slice(0, 12));
   }, []);
 
   const handleSaveKey = () => {
@@ -129,7 +128,7 @@ export default function Hub() {
     return data.translatedText;
   };
 
-  const handleFork = async (book: any, translate: boolean = false) => {
+  const handleOpen = async (book: any, translate: boolean = false) => {
     const currentKey = localStorage.getItem('gemini_api_key');
     setIsTranslating(book.title);
     try {
@@ -150,7 +149,7 @@ export default function Hub() {
       }
       
       await db.drafts.add({ 
-        title: book.title + (translate ? ' (Translated)' : ' (Forked)'), 
+        title: book.title, 
         author: book.author, 
         content: finalContent, 
         updatedAt: new Date(), 
@@ -165,55 +164,33 @@ export default function Hub() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FAFAFA] p-8 sm:p-16 text-[#1a1a1a] font-sans selection:bg-gray-200">
-      <div className="max-w-6xl mx-auto">
-        <header className="flex flex-col mb-20 space-y-12">
-          <div className="flex justify-between items-center">
-            <Link href="/" className="flex items-center space-x-2 text-[11px] font-bold tracking-widest uppercase opacity-40 hover:opacity-100 transition-opacity">
-              <ArrowLeft size={16} />
-              <span>Studio</span>
-            </Link>
-            <div className="flex items-center space-x-6">
-              {!hasKey && (
-                <div className="flex items-center border-b border-black/10 pb-1">
-                  <input type="password" placeholder="Gemini API Key" className="bg-transparent text-[10px] focus:outline-none w-32 tracking-widest" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-                  <button onClick={handleSaveKey} className="ml-2 opacity-30 hover:opacity-100"><Key size={12} /></button>
-                </div>
-              )}
-              <div className="text-[10px] font-bold tracking-widest uppercase opacity-30 flex items-center gap-1">
-                <span>Bookhub Protocol v0.1</span>
-              </div>
-            </div>
-          </div>
+    <main className="min-h-screen bg-[#FAFAFA] p-8 sm:p-16 text-[#1a1a1a] font-sans selection:bg-gray-200 flex flex-col items-center">
+      <div className="w-full max-w-5xl">
+        <header className="flex justify-between items-center mb-24 opacity-30 hover:opacity-100 transition-opacity duration-500">
+          <Link href="/" className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors">
+            <ArrowLeft strokeWidth={1.5} size={20} />
+          </Link>
           
-          <div className="flex flex-col sm:flex-row items-end justify-between gap-8 border-b border-black/5 pb-10">
-            <div className="space-y-4">
-              <h1 className="text-4xl sm:text-5xl font-serif tracking-tight text-[#1a1a1a] flex items-center gap-4">
-                <BookOpen size={36} className="opacity-20" />
-                Source Texts
-              </h1>
-              <p className="text-sm text-gray-500 max-w-md leading-relaxed">
-                Fork, translate, and rewrite literature as code. No platform lock-in. Data remains yours.
-              </p>
-            </div>
-            <div className="w-full sm:w-72 bg-white px-4 py-2.5 rounded-full border border-black/5 shadow-sm flex items-center focus-within:border-black/20 focus-within:shadow-md transition-all">
-              <Search className="opacity-30 mr-3" size={16} />
-              <input type="text" placeholder="Search sources..." className="bg-transparent w-full focus:outline-none text-sm font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            </div>
+          <div className="flex items-center">
+            {!hasKey && (
+              <div className="flex items-center border-b border-black/10 pb-1">
+                <input type="password" placeholder="Key" className="bg-transparent text-[10px] focus:outline-none w-16 tracking-widest text-center" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+                <button onClick={handleSaveKey} className="ml-2 hover:text-black transition-colors"><Key size={12} /></button>
+              </div>
+            )}
           </div>
         </header>
 
         {isTranslating && (
-          <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
-            <Loader2 className="animate-spin mb-4 opacity-50" size={32} />
-            <p className="font-serif italic text-lg">{isTranslating}</p>
-            <p className="text-[10px] font-bold tracking-widest uppercase mt-4 opacity-40">Fetching & Processing...</p>
+          <div className="fixed inset-0 z-50 bg-[#FAFAFA]/90 backdrop-blur-md flex flex-col items-center justify-center">
+            <Loader2 className="animate-spin mb-8 opacity-30" size={24} />
+            <p className="font-serif italic text-xl text-black/60">{isTranslating}</p>
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-8 gap-y-12 pb-20">
-          {STANDARD_EBOOKS.filter(b => b.title.toLowerCase().includes(searchQuery.toLowerCase()) || b.author.toLowerCase().includes(searchQuery.toLowerCase())).map((book) => (
-            <BookCard key={book.id + book.slug} book={book} onFork={handleFork} isTranslating={!!isTranslating} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-8 gap-y-16 pb-20">
+          {randomBooks.map((book) => (
+            <BookCard key={book.id + book.slug} book={book} onOpen={handleOpen} isTranslating={!!isTranslating} />
           ))}
         </div>
 
