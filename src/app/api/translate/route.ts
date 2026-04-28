@@ -2,17 +2,18 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(request: Request) {
-  const { text, targetLang, apiKey } = await request.json();
+  const { text, apiKey } = await request.json();
 
-  if (!text) return NextResponse.json({ error: 'No text provided' }, { status: 400 });
+  if (!text || text.trim() === "") return NextResponse.json({ error: 'No text provided' }, { status: 400 });
   if (!apiKey) return NextResponse.json({ error: 'API key is required' }, { status: 401 });
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
+    // Use gemini-1.5-flash as a highly reliable fallback for all accounts
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       generationConfig: {
-        temperature: 0.1, // 翻訳の安定性のために低めに設定
+        temperature: 0.1,
         topP: 0.95,
       }
     });
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
 2. 「はい、翻訳しました」「以下が翻訳です」などの前置きや解説は一切不要です。
 3. 自然で格調高い日本語（硬めの文体）を使用してください。
 4. 専門用語や固有名詞は、文脈から判断して適切に処理してください。
+5. 入力テキストに含まれるHTMLタグ（<h1>, <p>, <em>, <blockquote>など）は絶対に保持し、構造を破壊しないでください。
 
 【入力テキスト】
 ${text}

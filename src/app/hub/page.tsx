@@ -153,8 +153,8 @@ export default function Hub() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, apiKey: currentKey })
     });
-    if (!response.ok) throw new Error('Translation failed');
     const data = await response.json();
+    if (!response.ok) throw new Error(data.message || data.error || 'Translation failed');
     return data.translatedText;
   };
 
@@ -172,14 +172,18 @@ export default function Hub() {
       
       if (translate) {
         if (!currentKey) throw new Error('API Key Required for translation');
-        const paragraphs = rawContent.split(/<\/p>/i);
-        let translated = "";
-        for (let i = 0; i < Math.min(paragraphs.length, 10); i++) {
-           const res = await translateChunk(paragraphs[i], currentKey);
-           translated += res;
-           setUploadProgress(Math.round(((i + 1) / 10) * 100));
+        setIsTranslating('Translating Preview...');
+        
+        // Extract the first ~3000 characters of HTML to avoid hitting model output limits and to make it fast
+        let previewHtml = rawContent;
+        if (previewHtml.length > 3000) {
+            // Cut off at the nearest closing tag to avoid breaking HTML
+            const cutIndex = previewHtml.indexOf('</p>', 2500);
+            previewHtml = previewHtml.substring(0, cutIndex !== -1 ? cutIndex + 4 : 3000);
         }
-        finalContent = translated;
+        
+        const translated = await translateChunk(previewHtml, currentKey);
+        finalContent = translated + '\n\n<br/><p style="text-align: center; opacity: 0.5;"><em>(Translation Preview Ended)</em></p>';
       }
       
       await db.drafts.add({ 
