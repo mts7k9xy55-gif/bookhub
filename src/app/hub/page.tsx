@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Languages, Loader2, Key, BookOpen, PenLine, Upload, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Languages, Loader2, Key, BookOpen, Book, Upload, RefreshCw } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
@@ -80,7 +80,7 @@ function BookCard({ book, onOpen, isTranslating }: { book: any, onOpen: (book: a
             title="Open"
             className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
           >
-            <PenLine strokeWidth={1.5} size={22} />
+            <Book strokeWidth={1.5} size={22} />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onOpen(book, true); }} 

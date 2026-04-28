@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Loader2, ArrowLeft, BookOpen, PenLine, Globe } from 'lucide-react';
+import { Loader2, ArrowLeft, BookOpen, Book, Globe } from 'lucide-react';
 
 import Editor from '@/components/Editor';
 import { db } from '@/lib/db';
@@ -97,7 +97,7 @@ export default function Home() {
             className={`flex items-center justify-center px-5 py-2.5 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase transition-all ${isReadMode ? 'bg-black text-white hover:bg-black/80 shadow-md hover:scale-105 active:scale-95' : 'bg-transparent text-gray-500 border border-black/10 hover:border-black/30 hover:text-black active:scale-95'}`}
             title={isReadMode ? "Switch to Write Mode" : "Switch to Read Mode"}
           >
-            {isReadMode ? <PenLine strokeWidth={2} size={14} className="mr-2.5" /> : <BookOpen strokeWidth={2} size={14} className="mr-2.5" />}
+            {isReadMode ? <Book strokeWidth={2} size={14} className="mr-2.5" /> : <BookOpen strokeWidth={2} size={14} className="mr-2.5" />}
             {isReadMode ? 'Write' : 'Read'}
           </button>
         </div>
