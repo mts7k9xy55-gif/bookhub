@@ -1,65 +1,131 @@
-import Image from "next/image";
+'use client';
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { Cloud, Loader2, Sparkles, Bookmark, Cpu, ArrowLeft, Check } from 'lucide-react';
+
+import Editor from '@/components/Editor';
+import MusePanel from '@/components/MusePanel';
+import HistoryPanel from '@/components/HistoryPanel';
+import ForgePanel from '@/components/ForgePanel';
+import { db } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function Home() {
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const [draftId, setDraftId] = useState<number | null>(null);
+  const [localContent, setLocalContent] = useState<string>('');
+
+  const [isMuseOpen, setIsMuseOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isForgeOpen, setIsForgeOpen] = useState(false);
+
+  const drafts = useLiveQuery(() => 
+    db.drafts.orderBy('updatedAt').reverse().toArray()
+  );
+
+  useEffect(() => {
+    if (drafts === undefined) return;
+
+    if (draftId === null) {
+      const activeDraft = drafts.find(d => !d.isCommitted);
+      if (activeDraft) {
+        setDraftId(activeDraft.id!);
+        setLocalContent(activeDraft.content);
+      } else {
+        db.drafts.add({
+          title: 'Untitled',
+          content: '',
+          updatedAt: new Date(),
+          isCommitted: false
+        }).then(id => setDraftId(id ?? null));
+      }
+    }
+  }, [drafts, draftId]);
+
+  const handleUpdate = useCallback((newContent: string) => {
+    setLocalContent(newContent);
+    if (!draftId) return;
+    setSaveStatus('saving');
+    db.drafts.update(draftId, {
+      content: newContent,
+      updatedAt: new Date()
+    }).then(() => {
+      setTimeout(() => setSaveStatus('saved'), 500);
+    }).catch(() => setSaveStatus('error'));
+  }, [draftId]);
+
+  const handleRestore = useCallback((content: string) => {
+    handleUpdate(content);
+  }, [handleUpdate]);
+
+  const handlePublish = useCallback(async () => {
+    if (!draftId || !localContent) return;
+    setSaveStatus('saving');
+    const arweaveHash = `ar://${Math.random().toString(36).substring(2, 15)}`;
+    await db.drafts.update(draftId, { 
+      isCommitted: true, 
+      content: localContent, 
+      updatedAt: new Date(),
+      arweaveHash,
+      license: 'commons'
+    });
+    alert(`【Bookhub Protocol】\n\nこの本は世界へ放流されました。\nHash: ${arweaveHash}`);
+    const newId = await db.drafts.add({
+      title: 'A New Journey',
+      content: '',
+      updatedAt: new Date(),
+      isCommitted: false
+    });
+    setDraftId(newId ?? null);
+    setLocalContent('');
+    setTimeout(() => setSaveStatus('saved'), 500);
+  }, [draftId, localContent]);
+
+  const activeDraft = drafts?.find(d => d.id === draftId);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-start text-gray-800 font-sans selection:bg-gray-200">
+      
+      {/* 最小限で邪魔にならないヘッダー */}
+      <header className="w-full max-w-3xl flex justify-between items-center px-6 py-10 opacity-60 hover:opacity-100 transition-opacity duration-300">
+        <Link href="/hub" className="text-gray-400 hover:text-gray-800 transition-colors flex items-center gap-2 text-sm font-medium tracking-wide">
+          <ArrowLeft size={18} />
+        </Link>
+
+        <div className="flex items-center gap-6 text-gray-400">
+          <span className="text-xs tracking-wider uppercase font-medium flex items-center gap-1 min-w-[60px] justify-end">
+            {saveStatus === 'saving' ? (
+              <span className="animate-pulse">Saving...</span>
+            ) : saveStatus === 'saved' ? (
+              <>
+                <Check size={12} />
+                <span>Saved</span>
+              </>
+            ) : (
+              <span className="text-red-400">Error</span>
+            )}
+          </span>
+          <button onClick={() => setIsForgeOpen(!isForgeOpen)} title="Forge" className="hover:text-gray-800 transition-colors"><Cpu size={18} /></button>
+          <button onClick={() => setIsHistoryOpen(true)} title="History" className="hover:text-gray-800 transition-colors"><Bookmark size={18} /></button>
+          <button onClick={() => setIsMuseOpen(!isMuseOpen)} title="Muse" className="hover:text-gray-800 transition-colors"><Sparkles size={18} /></button>
+          <button onClick={handlePublish} title="Publish" className="hover:text-gray-800 transition-colors"><Cloud size={18} /></button>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </header>
+
+      {/* エディタ本体（シンプルで集中できる） */}
+      <article className="w-full max-w-2xl px-6 mt-16 mb-40">
+        {draftId === null ? (
+          <div className="flex justify-center text-gray-300 mt-20"><Loader2 className="animate-spin" /></div>
+        ) : (
+          <div className="text-[18px] leading-[2.2] text-[#2c2c2c]">
+            <Editor initialContent={activeDraft?.content || ''} onUpdate={handleUpdate} />
+          </div>
+        )}
+      </article>
+
+      <MusePanel isOpen={isMuseOpen} onClose={() => setIsMuseOpen(false)} currentContent={localContent} />
+      <HistoryPanel isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} commits={drafts?.filter(d => d.isCommitted) || []} currentContent={localContent} onRestore={handleRestore} />
+      <ForgePanel isOpen={isForgeOpen} onClose={() => setIsForgeOpen(false)} draft={activeDraft || null} />
+    </main>
   );
 }
