@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Loader2, ArrowLeft, BookOpen, Book, Globe } from 'lucide-react';
+import { Loader2, ArrowLeft, BookOpen, Book, Globe, Wallet, Coins } from 'lucide-react';
 
 import Editor from '@/components/Editor';
 import { db } from '@/lib/db';
@@ -71,17 +71,74 @@ export default function Home() {
     setLocalContent('');
   }, [draftId, localContent]);
 
+  // --- Web3 Mock State ---
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [balance, setBalance] = useState(0);
+  const [isTipping, setIsTipping] = useState(false);
+
+  const handleConnectWallet = () => {
+    setWalletConnected(true);
+    setBalance(1000); // Minter gives starting $WNDR
+  };
+
+  const handleTip = () => {
+    if (!walletConnected) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+    if (balance < 10) {
+      alert("Insufficient $WNDR balance.");
+      return;
+    }
+
+    setIsTipping(true);
+    setTimeout(() => {
+      setBalance(prev => prev - 10);
+      setIsTipping(false);
+      alert("Transaction Confirmed (On-Chain)\n\nSent: 10 $WNDR\nProtocol Fee: 0.1 $WNDR (1%)\nAuthor Received: 9.9 $WNDR (99%)");
+    }, 1500);
+  };
+
   const activeDraft = drafts?.find(d => d.id === draftId);
 
   return (
     <main className={`min-h-screen transition-colors duration-700 font-sans selection:bg-gray-200 flex flex-col items-center justify-start ${isReadMode ? 'bg-[#FCFAF7]' : 'bg-[#FAFAFA]'}`}>
-      
-      <header className="w-full max-w-3xl flex justify-between items-center px-6 py-10 transition-opacity duration-700 opacity-30 hover:opacity-100 focus-within:opacity-100">
+
+      <header className="w-full max-w-3xl flex justify-between items-center px-6 py-10 transition-opacity duration-700 opacity-40 hover:opacity-100 focus-within:opacity-100">
         <Link href="/hub" className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors" title="Back to Hub">
           <ArrowLeft strokeWidth={1.5} size={20} />
         </Link>
 
         <div className="flex items-center gap-4 text-gray-400">
+
+          {/* Wonderland Economy UI */}
+          <div className="flex items-center mr-4">
+            {!walletConnected ? (
+              <button 
+                onClick={handleConnectWallet}
+                className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-black/10 text-[10px] font-bold tracking-widest uppercase hover:border-black hover:text-black transition-all"
+              >
+                Connect Wallet
+              </button>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold tracking-widest text-black/60 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  {balance} $WNDR
+                </span>
+                {isReadMode && (
+                  <button 
+                    onClick={handleTip}
+                    disabled={isTipping}
+                    className="px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-700 text-[10px] font-bold tracking-widest uppercase hover:bg-amber-500/20 transition-all flex items-center gap-1"
+                  >
+                    {isTipping ? <Loader2 size={12} className="animate-spin" /> : 'Tip Author'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {!isReadMode && (
             <button 
               onClick={handlePublish}
