@@ -10,13 +10,15 @@ import { useEffect, useState } from 'react';
 interface EditorProps {
   initialContent?: string;
   onUpdate?: (content: string) => void;
+  editable?: boolean;
 }
 
-export default function Editor({ initialContent = '', onUpdate }: EditorProps) {
+export default function Editor({ initialContent = '', onUpdate, editable = true }: EditorProps) {
   const [mounted, setMounted] = useState(false);
 
   const editor = useEditor({
     immediatelyRender: false,
+    editable: editable,
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
@@ -29,7 +31,7 @@ export default function Editor({ initialContent = '', onUpdate }: EditorProps) {
     editorProps: {
       attributes: {
         // 余計な枠線を消し、美しいタイポグラフィを実現するクラス群
-        class: 'prose prose-stone prose-lg dark:prose-invert focus:outline-none min-h-[50vh] max-w-none text-gray-800',
+        class: `prose prose-stone prose-lg dark:prose-invert focus:outline-none min-h-[50vh] max-w-none text-gray-800 ${!editable ? 'select-text' : ''}`,
       },
     },
     onUpdate: ({ editor }) => {
@@ -40,6 +42,12 @@ export default function Editor({ initialContent = '', onUpdate }: EditorProps) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (editor && editor.isEditable !== editable) {
+      editor.setEditable(editable);
+    }
+  }, [editable, editor]);
 
   // initialContentが変わった（過去のコミットを読み込んだ）時に反映する
   useEffect(() => {
@@ -52,7 +60,7 @@ export default function Editor({ initialContent = '', onUpdate }: EditorProps) {
 
   return (
     <div className="relative w-full mt-10">
-      {editor && (
+      {editor && editable && (
         <BubbleMenu
           editor={editor}
           className="flex items-center space-x-1 bg-white shadow-sm border border-gray-100 rounded-full px-3 py-1.5 text-gray-500 backdrop-blur-md bg-white/90"
