@@ -1,5 +1,19 @@
 import type { Metadata, Viewport } from 'next';
+import { Noto_Serif_JP, Inter } from 'next/font/google';
 import './globals.css';
+
+const serif = Noto_Serif_JP({
+  weight: ['400', '600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-serif',
+});
+
+const sans = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-sans',
+});
 
 export const viewport: Viewport = {
   themeColor: '#fafafa',
@@ -10,13 +24,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Focus | 美しきミニマリストの書斎',
-  description: 'プラットフォーマーに依存しない、自己保有と没入のための次世代執筆エディタ',
+  title: 'Bookhub Protocol',
+  description: 'Anti-fragile literature client',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Focus',
+    title: 'Bookhub',
   },
 };
 
@@ -28,8 +42,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ja">
-      <body>
+    <html lang="ja" className={`${sans.variable} ${serif.variable}`}>
+      <body className="font-sans antialiased bg-[#FAFAFA] text-[#2d2d2d]">
         {children}
         <ServiceWorkerRegister />
       </body>
