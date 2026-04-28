@@ -132,7 +132,11 @@ export default function Hub() {
     const currentKey = localStorage.getItem('gemini_api_key');
     setIsTranslating(book.title);
     try {
-      const fetchRes = await fetch('/api/fetch-book', { method: 'POST', body: JSON.stringify({ slug: book.slug }) });
+      const fetchRes = await fetch('/api/fetch-book', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: book.title, author: book.author }) 
+      });
       const { content: rawContent } = await fetchRes.json();
       let finalContent = rawContent;
       
