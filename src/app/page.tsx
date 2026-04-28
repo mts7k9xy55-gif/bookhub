@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Cloud, Loader2, Sparkles, Bookmark, Cpu, ArrowLeft, Check } from 'lucide-react';
+import { Cloud, Loader2, Sparkles, Bookmark, Cpu, ArrowLeft, Check, Maximize } from 'lucide-react';
 
 import Editor from '@/components/Editor';
 import MusePanel from '@/components/MusePanel';
@@ -18,6 +18,7 @@ export default function Home() {
   const [isMuseOpen, setIsMuseOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isForgeOpen, setIsForgeOpen] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   const drafts = useLiveQuery(() => 
     db.drafts.orderBy('updatedAt').reverse().toArray()
@@ -41,6 +42,16 @@ export default function Home() {
       }
     }
   }, [drafts, draftId]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFocusMode) {
+        setIsFocusMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFocusMode]);
 
   const handleUpdate = useCallback((newContent: string) => {
     setLocalContent(newContent);
@@ -87,7 +98,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-start text-gray-800 font-sans selection:bg-gray-200">
       
       {/* 最小限で邪魔にならないヘッダー */}
-      <header className="w-full max-w-3xl flex justify-between items-center px-6 py-10 opacity-60 hover:opacity-100 transition-opacity duration-300">
+      <header className={`w-full max-w-3xl flex justify-between items-center px-6 py-10 transition-all duration-700 ${isFocusMode ? 'opacity-0 pointer-events-none -translate-y-4' : 'opacity-0 hover:opacity-100 focus-within:opacity-100'}`}>
         <Link href="/hub" className="text-gray-400 hover:text-gray-800 transition-colors flex items-center gap-2 text-sm font-medium tracking-wide">
           <ArrowLeft size={18} />
         </Link>
@@ -105,6 +116,7 @@ export default function Home() {
               <span className="text-red-400">Error</span>
             )}
           </span>
+          <button onClick={() => setIsFocusMode(true)} title="Focus Mode (Press Esc to exit)" className="hover:text-gray-800 transition-colors"><Maximize size={18} /></button>
           <button onClick={() => setIsForgeOpen(!isForgeOpen)} title="Forge" className="hover:text-gray-800 transition-colors"><Cpu size={18} /></button>
           <button onClick={() => setIsHistoryOpen(true)} title="History" className="hover:text-gray-800 transition-colors"><Bookmark size={18} /></button>
           <button onClick={() => setIsMuseOpen(!isMuseOpen)} title="Muse" className="hover:text-gray-800 transition-colors"><Sparkles size={18} /></button>
@@ -113,7 +125,7 @@ export default function Home() {
       </header>
 
       {/* エディタ本体（シンプルで集中できる） */}
-      <article className="w-full max-w-2xl px-6 mt-16 mb-40">
+      <article className={`w-full max-w-2xl px-6 mt-16 mb-40 transition-transform duration-700 ${isFocusMode ? '-translate-y-12' : ''}`}>
         {draftId === null ? (
           <div className="flex justify-center text-gray-300 mt-20"><Loader2 className="animate-spin" /></div>
         ) : (
