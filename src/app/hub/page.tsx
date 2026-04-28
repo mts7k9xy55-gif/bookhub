@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Languages, Loader2, Key, BookOpen, PenLine, Upload } from 'lucide-react';
+import { ArrowLeft, Languages, Loader2, Key, BookOpen, PenLine, Upload, RefreshCw } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
@@ -228,6 +228,18 @@ export default function Hub() {
               style={{ display: 'none' }} 
               onChange={handleLocalImport} 
             />
+
+            {/* The River Mechanism: Cycle the displayed books */}
+            <button 
+              onClick={() => {
+                const shuffled = [...STANDARD_EBOOKS].sort(() => 0.5 - Math.random());
+                setRandomBooks(shuffled.slice(0, 12));
+              }} 
+              className="flex items-center gap-2 p-2 rounded-full hover:bg-black/5 transition-all"
+              title="Flow (Show different texts)"
+            >
+              <RefreshCw strokeWidth={1.5} size={20} />
+            </button>
           </div>
         </header>
 
