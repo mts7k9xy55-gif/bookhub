@@ -98,7 +98,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-start text-gray-800 font-sans selection:bg-gray-200">
       
       {/* 最小限で邪魔にならないヘッダー */}
-      <header className={`w-full max-w-3xl flex justify-between items-center px-6 py-10 transition-all duration-700 ${isFocusMode ? 'opacity-0 pointer-events-none -translate-y-4' : 'opacity-0 hover:opacity-100 focus-within:opacity-100'}`}>
+      <header className={`w-full max-w-3xl flex justify-between items-center px-6 py-10 transition-all duration-700 ${isFocusMode ? 'opacity-0 pointer-events-none -translate-y-4' : 'opacity-40 hover:opacity-100 focus-within:opacity-100'}`}>
         <Link href="/hub" className="text-gray-400 hover:text-gray-800 transition-colors flex items-center gap-2 text-sm font-medium tracking-wide">
           <ArrowLeft size={18} />
         </Link>
