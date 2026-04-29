@@ -81,6 +81,16 @@ export async function POST(request: Request) {
           content = `<h1>${title}</h1><p><em>By ${author}</em></p>` + content;
         }
 
+        // To prevent Tiptap editor from freezing and keep the UI lightning fast, 
+        // we only load the first chunk (approx 80k chars).
+        const MAX_LENGTH = 80000;
+        if (content.length > MAX_LENGTH) {
+            const safeCut = content.indexOf('</p>', MAX_LENGTH);
+            if (safeCut !== -1) {
+                content = content.substring(0, safeCut + 4) + '\n\n<hr style="margin-top:4em; margin-bottom:2em; border-top: 1px solid #eee;"/><p style="text-align:center; opacity:0.4; font-size: 0.8em; letter-spacing: 0.1em; text-transform: uppercase;">The River Continues...<br/>(Deep Focus Mode: Only the first section is loaded to protect your attention)</p>';
+            }
+        }
+
         return NextResponse.json({ content });
       }
     }
@@ -128,13 +138,21 @@ export async function POST(request: Request) {
 
     let cleanText = rawText.substring(startIndex, endIndex).trim();
 
-    const paragraphs = cleanText
+    // To prevent Tiptap editor from freezing, limit to max 200 paragraphs
+    const MAX_PARAGRAPHS = 200;
+    let paragraphs = cleanText
       .split(/\n\s*\n/)
       .map(p => p.trim())
-      .filter(p => p.length > 0)
-      .map(p => `<p>${p.replace(/\n/g, ' ')}</p>`);
+      .filter(p => p.length > 0);
       
-    const finalHtml = `<h1>${title}</h1><p><em>By ${author}</em></p>` + paragraphs.join('');
+    const isTruncated = paragraphs.length > MAX_PARAGRAPHS;
+    paragraphs = paragraphs.slice(0, MAX_PARAGRAPHS);
+
+    let finalHtml = `<h1>${title}</h1><p><em>By ${author}</em></p>` + paragraphs.map(p => `<p>${p.replace(/\n/g, ' ')}</p>`).join('');
+
+    if (isTruncated) {
+       finalHtml += '\n\n<hr style="margin-top:4em; margin-bottom:2em; border-top: 1px solid #eee;"/><p style="text-align:center; opacity:0.4; font-size: 0.8em; letter-spacing: 0.1em; text-transform: uppercase;">The River Continues...<br/>(Deep Focus Mode: Only the first section is loaded to protect your attention)</p>';
+    }
 
     return NextResponse.json({ content: finalHtml });
 
