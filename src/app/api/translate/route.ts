@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(request: Request) {
-  const { text, apiKey } = await request.json();
+  const { text, apiKey, targetLang = 'Japanese' } = await request.json();
 
   if (!text || text.trim() === "") return NextResponse.json({ error: 'No text provided' }, { status: 400 });
   if (!apiKey) return NextResponse.json({ error: 'API key is required' }, { status: 401 });
@@ -18,19 +18,19 @@ export async function POST(request: Request) {
       }
     });
 
-    const prompt = `あなたは世界最高峰の翻訳家です。アイザック・アシモフやロバート・ハインラインのような、知的で簡潔、かつ叙情的なSF小説の文体を再現して翻訳してください。
+    const prompt = `You are a world-class literary translator. Translate the following text into ${targetLang}, mimicking an intellectual, concise, and highly refined literary style.
 
-【制約事項】
-1. 入力されたテキストのみを翻訳し、結果だけを出力してください。
-2. 「はい、翻訳しました」「以下が翻訳です」などの前置きや解説は一切不要です。
-3. 自然で格調高い日本語（硬めの文体）を使用してください。
-4. 専門用語や固有名詞は、文脈から判断して適切に処理してください。
-5. 入力テキストに含まれるHTMLタグ（<h1>, <p>, <em>, <blockquote>など）は絶対に保持し、構造を破壊しないでください。
+【Constraints】
+1. Translate ONLY the input text and output absolutely nothing else.
+2. Do NOT include any conversational filler, introductions, or explanations (e.g., "Here is the translation").
+3. Use a natural, highly refined, and slightly formal literary tone appropriate for classic literature in ${targetLang}.
+4. Handle specialized terms and proper nouns elegantly based on context.
+5. You MUST strictly preserve all HTML tags (<h1>, <p>, <em>, <blockquote>, etc.) exactly as they are without breaking the structure or removing them.
 
-【入力テキスト】
+【Input Text】
 ${text}
 
-【翻訳結果】`;
+【Translation】`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;

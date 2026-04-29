@@ -147,11 +147,11 @@ export default function Hub() {
     }
   };
 
-  const translateChunk = async (text: string, currentKey: string) => {
+  const translateChunk = async (text: string, currentKey: string, targetLang: string) => {
     const response = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, apiKey: currentKey })
+      body: JSON.stringify({ text, apiKey: currentKey, targetLang })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || data.error || 'Translation failed');
@@ -172,7 +172,17 @@ export default function Hub() {
       
       if (translate) {
         if (!currentKey) throw new Error('API Key Required for translation');
-        setIsTranslating('Translating Preview...');
+        
+        // Auto-detect the user's native language from the browser
+        let userLangName = 'Japanese';
+        try {
+          const userLocale = navigator.language || 'ja-JP';
+          userLangName = new Intl.DisplayNames(['en'], { type: 'language' }).of(userLocale) || 'Japanese';
+        } catch (e) {
+          // Fallback if Intl API is missing
+        }
+
+        setIsTranslating(`Translating to ${userLangName}...`);
         
         // Extract the first ~3000 characters of HTML to avoid hitting model output limits and to make it fast
         let previewHtml = rawContent;
@@ -182,7 +192,7 @@ export default function Hub() {
             previewHtml = previewHtml.substring(0, cutIndex !== -1 ? cutIndex + 4 : 3000);
         }
         
-        const translated = await translateChunk(previewHtml, currentKey);
+        const translated = await translateChunk(previewHtml, currentKey, userLangName);
         finalContent = translated + '\n\n<br/><p style="text-align: center; opacity: 0.5;"><em>(Translation Preview Ended)</em></p>';
       }
       
