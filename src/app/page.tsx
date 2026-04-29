@@ -58,7 +58,7 @@ export default function Home() {
       arweaveHash: arweaveHash,
       license: 'commons'
     });
-    alert(`【Bookhub Protocol】\n\nThis text has been cast into the commons.\nHash: ${arweaveHash}`);
+    alert(`【Serengethi Protocol】\n\nThis text has been cast into the infinite plains (Commons).\nHash: ${arweaveHash}`);
     setIsReadMode(true);
     // Create a new empty draft for the next session
     const newId = await db.drafts.add({
@@ -78,7 +78,7 @@ export default function Home() {
 
   const handleConnectWallet = () => {
     setWalletConnected(true);
-    setBalance(1000); // Minter gives starting $WNDR
+    setBalance(1000); // Minter gives starting tokens
   };
 
   const handleTip = () => {
@@ -87,7 +87,7 @@ export default function Home() {
       return;
     }
     if (balance < 10) {
-      alert("Insufficient $WNDR balance.");
+      alert("Insufficient balance.");
       return;
     }
 
@@ -95,7 +95,7 @@ export default function Home() {
     setTimeout(() => {
       setBalance(prev => prev - 10);
       setIsTipping(false);
-      alert("Transaction Confirmed (On-Chain)\n\nSent: 10 $WNDR\nProtocol Fee: 0.1 $WNDR (1%)\nAuthor Received: 9.9 $WNDR (99%)");
+      alert(`[ Serengethi Verified ]\n\nSent: 10 Tokens\nProtocol Fee: 0.1 Tokens\nAuthor Received: 9.9 Tokens\n\n"When proving trust becomes cheaper than fiat currency, the middleman vanishes."`);
     }, 1500);
   };
 
@@ -124,7 +124,7 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-bold tracking-widest text-black/60 flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                  {balance} $WNDR
+                  {balance} SGT
                 </span>
                 {isReadMode && (
                   <button 
