@@ -111,7 +111,7 @@ export default function Home() {
 
         <div className="flex items-center gap-4 text-gray-400">
 
-          {/* Wonderland Economy UI */}
+          {/* Serengethi Economy UI */}
           <div className="flex items-center mr-4">
             {!walletConnected ? (
               <button 

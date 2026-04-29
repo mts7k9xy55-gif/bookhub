@@ -12,7 +12,7 @@ It exists to destroy the asymmetries of power, data, and wealth created by Web 2
 * **The River, Not The Search (検索の否定):** The Hub presents a randomized subset of the public domain (e.g., Gutenberg). There are no algorithms, no SEO, no "Recommended for You," and no rankings. You cannot search; you can only discover.
 * **Fork & Rewrite (分岐と再記述):** Texts are not static commodities; they are open-source code. Users can fork, translate, and rewrite any text locally.
 
-## 3. The Economics of Wonderland (経済圏の法)
+## 3. The Economics of Serengethi (経済圏の法)
 The protocol aims to solve the "Starving OSS Developer" problem while maintaining zero exploitation.
 
 * **Direct Value Transfer (P2P投げ銭):** Readers compensate authors/translators directly via non-fiat, closed-loop tokens ($WNDR) or Layer-1 crypto (Solana/ETH).
