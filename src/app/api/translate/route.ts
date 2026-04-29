@@ -9,9 +9,10 @@ export async function POST(request: Request) {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Use gemini-1.5-flash as a highly reliable fallback for all accounts
+    // IMPORTANT (2026+): Gemini 1.5 is deprecated and removed. 
+    // MUST use models from the 2.5 or 3.x series (e.g., gemini-2.5-flash, gemini-3.0-pro).
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       generationConfig: {
         temperature: 0.1,
         topP: 0.95,
