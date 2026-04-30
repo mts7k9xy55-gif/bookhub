@@ -59,11 +59,11 @@ const getGradient = (title: string) => {
   return `linear-gradient(135deg, hsl(${hue1}, 10%, 40%), hsl(${hue2}, 15%, 20%))`;
 };
 
-function BookCard({ book, onOpen }: { book: any, onOpen: (book: any) => void }) {
+function BookCard({ book, onOpen, isTranslating }: { book: any, onOpen: (book: any, translate: boolean) => void, isTranslating: boolean }) {
   const gradient = getGradient(book.title);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col group cursor-pointer relative h-full" onClick={() => onOpen(book)}>
+    <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col group cursor-pointer relative h-full" onClick={() => onOpen(book, false)}>
       <div 
         className="aspect-[2/3] w-full rounded-sm shadow-md group-hover:shadow-2xl transition-all duration-700 relative overflow-hidden flex flex-col p-6 border border-white/5 group-hover:-translate-y-2"
         style={{ background: gradient }}
@@ -73,8 +73,24 @@ function BookCard({ book, onOpen }: { book: any, onOpen: (book: any) => void }) 
           <h3 className="text-sm md:text-base font-serif italic text-white/90 leading-snug line-clamp-4 drop-shadow-sm">{book.title}</h3>
         </div>
 
-        {/* Minimalist Hover Overlay - No buttons, just a gentle glow to indicate it's clickable */}
-        <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-all duration-500 z-30" />
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center space-x-6 z-30">
+          <button 
+            onClick={(e) => { e.stopPropagation(); onOpen(book, false); }} 
+            disabled={isTranslating} 
+            title="Open Native"
+            className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
+          >
+            <Book strokeWidth={1.5} size={22} />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onOpen(book, true); }} 
+            disabled={isTranslating} 
+            title="Translate via Gemini 3.0"
+            className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
+          >
+            <Languages strokeWidth={1.5} size={22} />
+          </button>
+        </div>
       </div>
     </motion.div>
   );
@@ -137,8 +153,20 @@ export default function Hub() {
     }
   };
 
-  const handleOpen = async (book: any) => {
-    setIsTranslating('Fetching from Gutenberg...');
+  const translateChunk = async (text: string, currentKey: string, targetLang: string) => {
+    const response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, apiKey: currentKey, targetLang })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || data.error || 'Translation failed');
+    return data.translatedText;
+  };
+
+  const handleOpen = async (book: any, translate: boolean = false) => {
+    const currentKey = localStorage.getItem('gemini_api_key');
+    setIsTranslating(book.title);
     try {
       const fetchRes = await fetch('/api/fetch-book', { 
         method: 'POST', 
@@ -146,11 +174,34 @@ export default function Hub() {
         body: JSON.stringify({ title: book.title, author: book.author }) 
       });
       const { content: rawContent } = await fetchRes.json();
+      let finalContent = rawContent;
+      
+      if (translate) {
+        if (!currentKey) throw new Error('API Key Required for translation via Gemini');
+        
+        let userLangName = 'Japanese';
+        try {
+          const userLocale = navigator.language || 'ja-JP';
+          userLangName = new Intl.DisplayNames(['en'], { type: 'language' }).of(userLocale) || 'Japanese';
+        } catch (e) {}
+
+        setIsTranslating(`Gemini 3.0 Translating to ${userLangName}...`);
+        
+        // Extract preview HTML to keep it fast
+        let previewHtml = rawContent;
+        if (previewHtml.length > 3000) {
+            const cutIndex = previewHtml.indexOf('</p>', 2500);
+            previewHtml = previewHtml.substring(0, cutIndex !== -1 ? cutIndex + 4 : 3000);
+        }
+        
+        const translated = await translateChunk(previewHtml, currentKey, userLangName);
+        finalContent = translated + '\n\n<br/><p style="text-align: center; opacity: 0.5;"><em>(Translation Preview Ended)</em></p>';
+      }
       
       await db.drafts.add({ 
         title: book.title, 
         author: book.author, 
-        content: rawContent, 
+        content: finalContent, 
         updatedAt: new Date(), 
         isCommitted: false 
       });
@@ -218,7 +269,7 @@ export default function Hub() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-8 gap-y-16 pb-20">
           <AnimatePresence mode="popLayout">
             {!isShuffling && randomBooks.map((book) => (
-              <BookCard key={book.id + book.slug} book={book} onOpen={handleOpen} />
+              <BookCard key={book.id + book.slug} book={book} onOpen={handleOpen} isTranslating={!!isTranslating} />
             ))}
           </AnimatePresence>
         </div>
