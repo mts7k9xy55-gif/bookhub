@@ -81,9 +81,37 @@ export async function POST(request: Request) {
           content = `<h1>${title}</h1><p><em>By ${author}</em></p>` + content;
         }
 
+        // Smart Detection: Try to find where the actual book starts (skipping long intros)
+        // Look for typical book starting markers
+        const startMarkers = [
+            /BOOK\s+[IVXLC]+/i,
+            /CHAPTER\s+[0-9IVXLC]+/i,
+            /PERSONS OF THE DIALOGUE/i
+        ];
+
+        let bestIndex = -1;
+        for (const marker of startMarkers) {
+            const match = content.match(marker);
+            if (match && match.index !== undefined) {
+                // We want the first one, but let's be careful not to pick a TOC entry
+                // Usually TOC entries are inside <a> or <table>. Actual headings are <h2>/<h3>.
+                if (bestIndex === -1 || match.index < bestIndex) {
+                    bestIndex = match.index;
+                }
+            }
+        }
+
+        if (bestIndex !== -1 && bestIndex > 5000) { // If it's a deep start
+            const before = content.substring(0, bestIndex);
+            const after = content.substring(bestIndex);
+            content = before + 
+                '<div style="background:#000; color:#fff; padding: 2px 10px; display:inline-block; font-size:10px; font-weight:bold; letter-spacing:0.2em; margin: 40px 0;">START OF SOURCE</div>' + 
+                after;
+        }
+
         // To prevent Tiptap editor from freezing and keep the UI lightning fast, 
-        // we only load the first chunk (approx 80k chars).
-        const MAX_LENGTH = 80000;
+        // we only load the first chunk (approx 120k chars now since it's structured).
+        const MAX_LENGTH = 120000;
         if (content.length > MAX_LENGTH) {
             const safeCut = content.indexOf('</p>', MAX_LENGTH);
             if (safeCut !== -1) {
