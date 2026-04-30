@@ -24,5 +24,11 @@ The protocol aims to solve the "Starving OSS Developer" problem while maintainin
 * Features that encourage "doom-scrolling" or context-switching must be systematically eradicated.
 * Tools like the local OS-level `deep_focus_mac.command` are provided to physically sever the user from the "torrent" of the legacy internet.
 
+## 5. The Abstraction of Reality (現実のAPI化)
+To bypass the regulatory nightmares of fiat exchange and the rent-seeking of legacy monopolies (Amazon, Uber), the protocol abstracts the physical world into API calls.
+* **The Closed Loop:** The internal currency ($SGT) is never exchanged for fiat. It is a pure unit of account within the game/protocol.
+* **Reality as a Reward:** Users spend $SGT not to "buy" things, but to trigger protocol-managed API calls that manifest physical results (e.g., printing a book, ordering a service).
+* **The Tightrope:** This model strives for hyper-efficient transactions by completely abstracting the fiat layer. We acknowledge the tension between ultimate efficiency and the creeping shadow of "indirect money laundering" regulations, pushing the boundaries of what a closed-loop digital empire can legally manifest in the atomic world.
+
 ---
 *This document serves as the absolute top-down architectural law for any AI or human engineer contributing to Bookhub.*
