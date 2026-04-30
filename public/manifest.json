@@ -1,21 +1,16 @@
 {
-  "name": "Focus | Bookhub",
-  "short_name": "Focus",
-  "description": "美しきミニマリストの書斎",
+  "name": "Bookhub Search Engine",
+  "short_name": "Bookhub SE",
+  "description": "The Search Engine for Classic Literature",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fafafa",
   "theme_color": "#fafafa",
   "icons": [
     {
-      "src": "/window.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    },
-    {
-      "src": "/file.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
     }
   ]
 }

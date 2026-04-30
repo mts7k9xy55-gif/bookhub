@@ -24,8 +24,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Bookhub ',
-  description: 'Anti-fragile literature client',
+  title: 'Bookhub SE',
+  description: 'The Search Engine for Classic Literature',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -42,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ja" className={`${sans.variable} ${serif.variable}`}>
+    <html lang="en" className={`${sans.variable} ${serif.variable}`}>
       <body className="font-sans antialiased bg-[#FAFAFA] text-[#2d2d2d]">
         {children}
         <ServiceWorkerRegister />
