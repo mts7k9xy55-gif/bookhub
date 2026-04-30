@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Bookhub Protocol',
+  title: 'Bookhub ',
   description: 'Anti-fragile literature client',
   manifest: '/manifest.json',
   appleWebApp: {

@@ -91,7 +91,7 @@ export default function Home() {
       arweaveHash: arweaveHash,
       license: 'commons'
     });
-    alert(`【Serengethi Protocol】\n\nThis text has been cast into the infinite plains (Commons).\nHash: ${arweaveHash}`);
+    alert(`【Bookhub】\n\nThis text has been cast into the infinite plains (Commons).\nHash: ${arweaveHash}`);
     setIsReadMode(true);
     const newId = await db.drafts.add({
       title: 'A New Journey',
@@ -115,7 +115,7 @@ export default function Home() {
     setTimeout(async () => {
       await db.identity.update(identity.id!, { balance: identity.balance - 10 });
       setIsTipping(false);
-      alert(`[ Serengethi Verified ]\n\nPass ID: ${identity.address}\nSent: 10 Tokens\nProtocol Fee: 0.1 Tokens\nAuthor Received: 9.9 Tokens\n\n"When proving trust becomes cheaper than fiat currency, the middleman vanishes."`);
+      alert(`[ Bookhub Verified ]\n\nPass ID: ${identity.address}\nSent: 10 Tokens\n Fee: 0.1 Tokens\nAuthor Received: 9.9 Tokens\n\n"When proving trust becomes cheaper than fiat currency, the middleman vanishes."`);
     }, 1200);
   };
 

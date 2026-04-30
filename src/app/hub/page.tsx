@@ -7,7 +7,7 @@ import { db } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 
 const STANDARD_EBOOKS = [
-  { id: 'alice', slug: 'lewis-carroll/alices-adventures-in-wonderland', title: "Alice's Adventures in Serengethi", author: 'Lewis Carroll' },
+  { id: 'alice', slug: 'lewis-carroll/alices-adventures-in-wonderland', title: "Alice's Adventures in Bookhub", author: 'Lewis Carroll' },
   { id: 'gatsby', slug: 'f-scott-fitzgerald/the-great-gatsby', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald' },
   { id: 'metamorphosis', slug: 'franz-kafka/the-metamorphosis', title: 'The Metamorphosis', author: 'Franz Kafka' },
   { id: 'origin-of-species', slug: 'charles-darwin/on-the-origin-of-species', title: 'On the Origin of Species', author: 'Charles Darwin' },
