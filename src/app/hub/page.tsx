@@ -59,11 +59,11 @@ const getGradient = (title: string) => {
   return `linear-gradient(135deg, hsl(${hue1}, 10%, 40%), hsl(${hue2}, 15%, 20%))`;
 };
 
-function BookCard({ book, onOpen, isTranslating }: { book: any, onOpen: (book: any, translate: boolean) => void, isTranslating: boolean }) {
+function BookCard({ book, onOpen }: { book: any, onOpen: (book: any) => void }) {
   const gradient = getGradient(book.title);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col group cursor-pointer relative h-full">
+    <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col group cursor-pointer relative h-full" onClick={() => onOpen(book)}>
       <div 
         className="aspect-[2/3] w-full rounded-sm shadow-md group-hover:shadow-2xl transition-all duration-700 relative overflow-hidden flex flex-col p-6 border border-white/5 group-hover:-translate-y-2"
         style={{ background: gradient }}
@@ -73,24 +73,8 @@ function BookCard({ book, onOpen, isTranslating }: { book: any, onOpen: (book: a
           <h3 className="text-sm md:text-base font-serif italic text-white/90 leading-snug line-clamp-4 drop-shadow-sm">{book.title}</h3>
         </div>
 
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center space-x-6 z-30">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onOpen(book, false); }} 
-            disabled={isTranslating} 
-            title="Open"
-            className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
-          >
-            <Book strokeWidth={1.5} size={22} />
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onOpen(book, true); }} 
-            disabled={isTranslating} 
-            title="Translate"
-            className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
-          >
-            <Languages strokeWidth={1.5} size={22} />
-          </button>
-        </div>
+        {/* Minimalist Hover Overlay - No buttons, just a gentle glow to indicate it's clickable */}
+        <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-all duration-500 z-30" />
       </div>
     </motion.div>
   );
@@ -99,19 +83,25 @@ function BookCard({ book, onOpen, isTranslating }: { book: any, onOpen: (book: a
 export default function Hub() {
   const router = useRouter();
   const [isTranslating, setIsTranslating] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [apiKey, setApiKey] = useState('');
   const [hasKey, setHasKey] = useState(false);
   const [randomBooks, setRandomBooks] = useState<any[]>([]);
+  const [isShuffling, setIsShuffling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const shuffleBooks = () => {
+    setIsShuffling(true);
+    setTimeout(() => {
+      const shuffled = [...STANDARD_EBOOKS].sort(() => 0.5 - Math.random());
+      setRandomBooks(shuffled.slice(0, 12));
+      setIsShuffling(false);
+    }, 400); // Give time for exit animation
+  };
 
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key');
     if (savedKey) { setApiKey(savedKey); setHasKey(true); }
-    
-    // Shuffle and pick 12 random books on client side to avoid hydration mismatch
-    const shuffled = [...STANDARD_EBOOKS].sort(() => 0.5 - Math.random());
-    setRandomBooks(shuffled.slice(0, 12));
+    shuffleBooks();
   }, []);
 
   const handleSaveKey = () => {
@@ -147,20 +137,8 @@ export default function Hub() {
     }
   };
 
-  const translateChunk = async (text: string, currentKey: string, targetLang: string) => {
-    const response = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, apiKey: currentKey, targetLang })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || data.error || 'Translation failed');
-    return data.translatedText;
-  };
-
-  const handleOpen = async (book: any, translate: boolean = false) => {
-    const currentKey = localStorage.getItem('gemini_api_key');
-    setIsTranslating(book.title);
+  const handleOpen = async (book: any) => {
+    setIsTranslating('Fetching from Gutenberg...');
     try {
       const fetchRes = await fetch('/api/fetch-book', { 
         method: 'POST', 
@@ -168,38 +146,11 @@ export default function Hub() {
         body: JSON.stringify({ title: book.title, author: book.author }) 
       });
       const { content: rawContent } = await fetchRes.json();
-      let finalContent = rawContent;
-      
-      if (translate) {
-        if (!currentKey) throw new Error('API Key Required for translation');
-        
-        // Auto-detect the user's native language from the browser
-        let userLangName = 'Japanese';
-        try {
-          const userLocale = navigator.language || 'ja-JP';
-          userLangName = new Intl.DisplayNames(['en'], { type: 'language' }).of(userLocale) || 'Japanese';
-        } catch (e) {
-          // Fallback if Intl API is missing
-        }
-
-        setIsTranslating(`Translating to ${userLangName}...`);
-        
-        // Extract the first ~3000 characters of HTML to avoid hitting model output limits and to make it fast
-        let previewHtml = rawContent;
-        if (previewHtml.length > 3000) {
-            // Cut off at the nearest closing tag to avoid breaking HTML
-            const cutIndex = previewHtml.indexOf('</p>', 2500);
-            previewHtml = previewHtml.substring(0, cutIndex !== -1 ? cutIndex + 4 : 3000);
-        }
-        
-        const translated = await translateChunk(previewHtml, currentKey, userLangName);
-        finalContent = translated + '\n\n<br/><p style="text-align: center; opacity: 0.5;"><em>(Translation Preview Ended)</em></p>';
-      }
       
       await db.drafts.add({ 
         title: book.title, 
         author: book.author, 
-        content: finalContent, 
+        content: rawContent, 
         updatedAt: new Date(), 
         isCommitted: false 
       });
@@ -265,9 +216,11 @@ export default function Hub() {
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-8 gap-y-16 pb-20">
-          {randomBooks.map((book) => (
-            <BookCard key={book.id + book.slug} book={book} onOpen={handleOpen} isTranslating={!!isTranslating} />
-          ))}
+          <AnimatePresence mode="popLayout">
+            {!isShuffling && randomBooks.map((book) => (
+              <BookCard key={book.id + book.slug} book={book} onOpen={handleOpen} />
+            ))}
+          </AnimatePresence>
         </div>
 
       </div>
