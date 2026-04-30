@@ -60,7 +60,7 @@ const getGradient = (title: string) => {
   return `linear-gradient(135deg, hsl(${hue1}, 10%, 40%), hsl(${hue2}, 15%, 20%))`;
 };
 
-function BookCard({ book, onOpen, onHide, isTranslating }: { book: any, onOpen: (book: any, translate: boolean) => void, onHide: (id: string) => void, isTranslating: boolean }) {
+function BookCard({ book, onOpen, onHide, isOpening }: { book: any, onOpen: (book: any) => void, onHide: (id: string) => void, isOpening: boolean }) {
   const gradient = getGradient(book.title);
 
   return (
@@ -68,36 +68,29 @@ function BookCard({ book, onOpen, onHide, isTranslating }: { book: any, onOpen: 
       <div 
         className="aspect-[2/3] w-full rounded-sm shadow-md group-hover:shadow-2xl transition-all duration-700 relative overflow-hidden flex flex-col p-6 border border-white/5 group-hover:-translate-y-2"
         style={{ background: gradient }}
+        onClick={() => onOpen(book)}
       >
         <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10 space-y-4">
           <p className="text-[8px] font-medium tracking-[0.3em] uppercase text-white/50">{book.author}</p>
           <h3 className="text-sm md:text-base font-serif italic text-white/90 leading-snug line-clamp-4 drop-shadow-sm">{book.title}</h3>
         </div>
 
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center space-x-4 z-30">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center space-x-8 z-30">
           <button 
-            onClick={(e) => { e.stopPropagation(); onOpen(book, false); }} 
-            disabled={isTranslating} 
-            title="Open"
-            className="p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
+            onClick={(e) => { e.stopPropagation(); onOpen(book); }} 
+            disabled={isOpening} 
+            title="Open Source"
+            className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
           >
-            <Book strokeWidth={1.5} size={20} />
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onOpen(book, true); }} 
-            disabled={isTranslating} 
-            title="Translate via Gemini 3.0"
-            className="p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
-          >
-            <Languages strokeWidth={1.5} size={20} />
+            <Book strokeWidth={1.5} size={24} />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onHide(book.id); }} 
-            disabled={isTranslating} 
+            disabled={isOpening} 
             title="Eradicate"
-            className="p-3 rounded-full text-red-400/50 hover:text-red-400 hover:bg-red-400/10 active:scale-95 transition-all disabled:opacity-50"
+            className="p-4 rounded-full text-red-400/50 hover:text-red-400 hover:bg-red-400/10 active:scale-95 transition-all disabled:opacity-50"
           >
-            <Trash2 strokeWidth={1.5} size={20} />
+            <Trash2 strokeWidth={1.5} size={24} />
           </button>
         </div>
       </div>
@@ -107,13 +100,10 @@ function BookCard({ book, onOpen, onHide, isTranslating }: { book: any, onOpen: 
 
 export default function Hub() {
   const router = useRouter();
-  const [isTranslating, setIsTranslating] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState('');
-  const [hasKey, setHasKey] = useState(false);
+  const [isOpening, setIsOpening] = useState<string | null>(null);
   const [randomBooks, setRandomBooks] = useState<any[]>([]);
   const [isShuffling, setIsShuffling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const passInputRef = useRef<HTMLInputElement>(null);
 
   const hiddenBooks = useLiveQuery(() => db.hiddenBooks.toArray()) || [];
 
@@ -125,18 +115,12 @@ export default function Hub() {
       const shuffled = [...available].sort(() => 0.5 - Math.random());
       setRandomBooks(shuffled.slice(0, 12));
       setIsShuffling(false);
-    }, 400); // Give time for exit animation
+    }, 400); 
   };
 
   useEffect(() => {
-    const savedKey = localStorage.getItem('gemini_api_key');
-    if (savedKey) { setApiKey(savedKey); setHasKey(true); }
     shuffleBooks();
   }, [hiddenBooks.length]);
-
-  const handleSaveKey = () => {
-    if (apiKey.trim()) { localStorage.setItem('gemini_api_key', apiKey); setHasKey(true); }
-  };
 
   const handleHide = async (id: string) => {
     await db.hiddenBooks.add({ bookId: id });
@@ -157,7 +141,7 @@ export default function Hub() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsTranslating('Importing Local Book...');
+    setIsOpening('Importing Local...');
     try {
       const text = await file.text();
       const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
@@ -175,25 +159,13 @@ export default function Hub() {
     } catch (error) {
       alert(`Error: ${error}`);
     } finally {
-      setIsTranslating(null);
+      setIsOpening(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const translateChunk = async (text: string, currentKey: string, targetLang: string) => {
-    const response = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, apiKey: currentKey, targetLang })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || data.error || 'Translation failed');
-    return data.translatedText;
-  };
-
-  const handleOpen = async (book: any, translate: boolean = false) => {
-    const currentKey = localStorage.getItem('gemini_api_key');
-    setIsTranslating(book.title);
+  const handleOpen = async (book: any) => {
+    setIsOpening(book.title);
     try {
       const fetchRes = await fetch('/api/fetch-book', { 
         method: 'POST', 
@@ -201,33 +173,11 @@ export default function Hub() {
         body: JSON.stringify({ title: book.title, author: book.author }) 
       });
       const { content: rawContent } = await fetchRes.json();
-      let finalContent = rawContent;
-      
-      if (translate) {
-        if (!currentKey) throw new Error('API Key Required for translation via Gemini');
-        
-        let userLangName = 'Japanese';
-        try {
-          const userLocale = navigator.language || 'ja-JP';
-          userLangName = new Intl.DisplayNames(['en'], { type: 'language' }).of(userLocale) || 'Japanese';
-        } catch (e) {}
-
-        setIsTranslating(`Gemini 3.0 Translating to ${userLangName}...`);
-        
-        let previewHtml = rawContent;
-        if (previewHtml.length > 3000) {
-            const cutIndex = previewHtml.indexOf('</p>', 2500);
-            previewHtml = previewHtml.substring(0, cutIndex !== -1 ? cutIndex + 4 : 3000);
-        }
-        
-        const translated = await translateChunk(previewHtml, currentKey, userLangName);
-        finalContent = translated + '\n\n<br/><p style="text-align: center; opacity: 0.5;"><em>(Translation Preview Ended)</em></p>';
-      }
       
       await db.drafts.add({ 
         title: book.title, 
         author: book.author, 
-        content: finalContent, 
+        content: rawContent, 
         updatedAt: new Date(), 
         isCommitted: false 
       });
@@ -235,7 +185,7 @@ export default function Hub() {
     } catch (e: any) { 
       alert(`Error: ${e.message}`); 
     } finally { 
-      setIsTranslating(null); 
+      setIsOpening(null); 
     }
   };
 
@@ -248,13 +198,6 @@ export default function Hub() {
           </Link>
           
           <div className="flex items-center gap-6">
-            {!hasKey && (
-              <div className="flex items-center border-b border-black/10 pb-1">
-                <input type="password" placeholder="Key" className="bg-transparent text-[10px] focus:outline-none w-16 tracking-widest text-center" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-                <button onClick={handleSaveKey} className="ml-2 hover:text-black transition-colors"><Key size={12} /></button>
-              </div>
-            )}
-            
             <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full hover:bg-black/5 transition-colors" title="Import Text"><Upload strokeWidth={1.5} size={20} /></button>
             <input type="file" accept=".txt,.md" ref={fileInputRef} style={{ display: 'none' }} onChange={handleLocalImport} />
 
@@ -271,17 +214,17 @@ export default function Hub() {
           </div>
         </header>
 
-        {isTranslating && (
+        {isOpening && (
           <div className="fixed inset-0 z-50 bg-[#FAFAFA]/90 backdrop-blur-md flex flex-col items-center justify-center">
             <Loader2 className="animate-spin mb-8 opacity-30" size={24} />
-            <p className="font-serif italic text-xl text-black/60 text-center px-10">{isTranslating}</p>
+            <p className="font-serif italic text-xl text-black/60 text-center px-10">{isOpening}</p>
           </div>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-8 gap-y-16 pb-20">
           <AnimatePresence mode="popLayout">
             {!isShuffling && randomBooks.map((book) => (
-              <BookCard key={book.id + book.slug} book={book} onOpen={handleOpen} onHide={handleHide} isTranslating={!!isTranslating} />
+              <BookCard key={book.id + book.slug} book={book} onOpen={handleOpen} onHide={handleHide} isOpening={!!isOpening} />
             ))}
           </AnimatePresence>
         </div>
