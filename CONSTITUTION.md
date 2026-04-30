@@ -30,5 +30,9 @@ To bypass the regulatory nightmares of fiat exchange and the rent-seeking of leg
 * **Reality as a Reward:** Users spend $SGT not to "buy" things, but to trigger protocol-managed API calls that manifest physical results (e.g., printing a book, ordering a service).
 * **The Tightrope:** This model strives for hyper-efficient transactions by completely abstracting the fiat layer. We acknowledge the tension between ultimate efficiency and the creeping shadow of "indirect money laundering" regulations, pushing the boundaries of what a closed-loop digital empire can legally manifest in the atomic world.
 
+## 6. The Perpetuity Decree (永続の誓い)
+"Even if I die, the protocol remains."
+Serengethi is built with the explicit mandate to outlive its architect. It requires no central maintenance, no ongoing fiat injection to survive, and relies solely on the immutable laws of mathematics, cryptography, and open APIs. It is a gift to the void, a self-sustaining ecosystem designed to exist perpetually as long as the internet breathes.
+
 ---
 *This document serves as the absolute top-down architectural law for any AI or human engineer contributing to Bookhub.*
