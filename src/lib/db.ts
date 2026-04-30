@@ -20,13 +20,24 @@ export interface Draft {
   license?: 'private' | 'commons'; // 'private': 自己保有, 'commons': 共有財プールへ放流
 }
 
+export interface Identity {
+  id?: number;
+  publicKey: string;
+  privateKey: CryptoKey; // Web Crypto API key object
+  address: string;      // Human-readable ID (hash of public key)
+  balance: number;      // Current $SGT balance
+  createdAt: Date;
+}
+
 const db = new Dexie('BookhubDB') as Dexie & {
   drafts: EntityTable<Draft, 'id'>;
+  identity: EntityTable<Identity, 'id'>;
 };
 
-// バージョン2: 表紙（coverImage）と著者（author）を追加
-db.version(2).stores({
-  drafts: '++id, title, author, updatedAt, isCommitted'
+// バージョン3: Identity（通手形）を追加
+db.version(3).stores({
+  drafts: '++id, title, author, updatedAt, isCommitted',
+  identity: '++id, address'
 });
 
 export { db };
