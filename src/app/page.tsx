@@ -113,7 +113,7 @@ export default function Home() {
           <div className={`transition-all duration-700 ${isReadMode ? 'font-serif text-[22px] leading-[2.2] text-[#1a1a1a] antialiased tracking-wide' : 'text-[18px] leading-[2.2] text-[#2c2c2c]'}`}>
             {isReadMode ? (
               /* Static HTML rendering in chunks for stable translation and performance */
-              <div className="prose prose-stone prose-lg max-w-none flex flex-col gap-0 [&_p]:mb-12 [&_h1]:mb-20 [&_h1]:mt-40 [&_h2]:mt-32 [&_h2]:mb-12 [&_blockquote]:border-l-2 [&_blockquote]:pl-8 [&_blockquote]:italic [&_blockquote]:opacity-60">
+              <div className="prose prose-stone prose-lg max-w-none flex flex-col gap-0 [&_p]:mb-8 [&_h1]:mb-12 [&_h1]:mt-24 [&_h2]:mt-20 [&_h2]:mb-8 [&_blockquote]:border-l-2 [&_blockquote]:pl-8 [&_blockquote]:italic [&_blockquote]:opacity-60">
                 {displayChunks.map((chunk, i) => (
                   <div 
                     key={i} 
