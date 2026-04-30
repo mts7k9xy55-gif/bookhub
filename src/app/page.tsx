@@ -87,21 +87,27 @@ export default function Home() {
   }, [loadMore]);
 
   return (
-    <main lang="en" className={`min-h-screen transition-colors duration-700 font-sans selection:bg-gray-200 flex flex-col items-start justify-start ${isReadMode ? 'bg-[#FCFAF7]' : 'bg-[#FAFAFA]'}`}>
+    <main lang="en" className={`min-h-screen transition-colors duration-1000 font-sans selection:bg-gray-200 flex flex-col items-start justify-start ${isReadMode ? 'bg-[#FDFBF7]' : 'bg-[#FFFFFF]'}`}>
       
       <header className="w-full max-w-4xl flex justify-between items-center px-8 sm:px-20 py-10 transition-opacity duration-700 opacity-40 hover:opacity-100 focus-within:opacity-100">
-        <Link href="/hub" className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors" title="Back to Hub">
-          <ArrowLeft strokeWidth={1.5} size={20} />
-        </Link>
+        <div className="flex items-center gap-6">
+            <Link href="/hub" className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors" title="Discovery (Hub)">
+                <Search strokeWidth={1.5} size={20} />
+            </Link>
+            <div className="h-4 w-[1px] bg-black/10"></div>
+            <span className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-40">
+                {isReadMode ? 'Read Mode' : 'Fork Mode'}
+            </span>
+        </div>
 
-        <div className="flex items-center gap-4 text-gray-400">
+        <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsReadMode(!isReadMode)} 
-            className={`flex items-center justify-center px-5 py-2.5 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase transition-all ${isReadMode ? 'bg-black text-white hover:bg-black/80 shadow-md hover:scale-105 active:scale-95' : 'bg-transparent text-gray-500 border border-black/10 hover:border-black/30 hover:text-black active:scale-95'}`}
-            title={isReadMode ? "Switch to Write Mode" : "Switch to Read Mode"}
+            className={`flex items-center justify-center px-6 py-2.5 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase transition-all shadow-sm ${isReadMode ? 'bg-black text-white hover:scale-105' : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'}`}
+            title={isReadMode ? "Fork this text" : "Return to Reading"}
           >
-            {isReadMode ? <Book strokeWidth={2} size={14} className="mr-2.5" /> : <BookOpen strokeWidth={2} size={14} className="mr-2.5" />}
-            {isReadMode ? 'Write' : 'Read'}
+            {isReadMode ? <RefreshCw strokeWidth={2} size={14} className="mr-2.5" /> : <BookOpen strokeWidth={2} size={14} className="mr-2.5" />}
+            {isReadMode ? 'Fork' : 'Read'}
           </button>
         </div>
       </header>

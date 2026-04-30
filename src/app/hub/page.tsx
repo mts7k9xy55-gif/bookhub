@@ -170,25 +170,31 @@ export default function Hub() {
       <div className="mx-auto max-w-6xl px-6 py-16">
         
         <header className="mb-20 flex flex-col md:flex-row items-center justify-between gap-8 opacity-40 hover:opacity-100 transition-opacity duration-500">
-          <Link href="/" className="p-2 hover:bg-black/5 rounded-full transition-colors">
-            <ArrowLeft size={20} strokeWidth={1.5} />
-          </Link>
+          <div className="flex items-center gap-6">
+            <button onClick={shuffle} className="p-2 hover:bg-black/5 rounded-full transition-all" title="Shuffle Pool">
+                <RefreshCw size={20} strokeWidth={1.5} className={isSearching ? 'animate-spin' : ''} />
+            </button>
+            <div className="h-4 w-[1px] bg-black/10"></div>
+            <Link href="/" className="flex items-center gap-2 p-2 hover:bg-black/5 rounded-full transition-colors" title="My Studio">
+                <BookOpen size={20} strokeWidth={1.5} />
+            </Link>
+          </div>
           
           <div className="relative flex-1 max-w-md w-full group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-black/20 group-focus-within:text-black/40" size={18} />
             <input 
               type="text"
-              placeholder="Search or filter classics..."
+              placeholder="Search classics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-full border border-black/5 bg-white py-3 pl-12 pr-10 outline-none focus:border-black/10 transition-all font-serif italic"
+              className="w-full rounded-full border border-black/5 bg-white py-3 pl-12 pr-10 outline-none focus:border-black/10 transition-all font-serif italic text-lg"
             />
             {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-black/10" size={16} />}
           </div>
 
-          <button onClick={shuffle} className="p-2 hover:bg-black/5 rounded-full transition-all">
-            <RefreshCw size={20} strokeWidth={1.5} />
-          </button>
+          <div className="hidden md:block w-[100px] text-right">
+            <span className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-20">Hub</span>
+          </div>
         </header>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
