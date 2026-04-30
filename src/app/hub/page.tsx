@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Languages, Loader2, Key, BookOpen, Book, Upload, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Languages, Loader2, Key, BookOpen, Book, Upload, RefreshCw, Trash2, Download } from 'lucide-react';
 import { db } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useRouter } from 'next/navigation';
 
 const STANDARD_EBOOKS = [
@@ -59,11 +60,11 @@ const getGradient = (title: string) => {
   return `linear-gradient(135deg, hsl(${hue1}, 10%, 40%), hsl(${hue2}, 15%, 20%))`;
 };
 
-function BookCard({ book, onOpen, isTranslating }: { book: any, onOpen: (book: any, translate: boolean) => void, isTranslating: boolean }) {
+function BookCard({ book, onOpen, onHide, isTranslating }: { book: any, onOpen: (book: any, translate: boolean) => void, onHide: (id: string) => void, isTranslating: boolean }) {
   const gradient = getGradient(book.title);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col group cursor-pointer relative h-full" onClick={() => onOpen(book, false)}>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.4 }} className="flex flex-col group cursor-pointer relative h-full">
       <div 
         className="aspect-[2/3] w-full rounded-sm shadow-md group-hover:shadow-2xl transition-all duration-700 relative overflow-hidden flex flex-col p-6 border border-white/5 group-hover:-translate-y-2"
         style={{ background: gradient }}
@@ -73,22 +74,30 @@ function BookCard({ book, onOpen, isTranslating }: { book: any, onOpen: (book: a
           <h3 className="text-sm md:text-base font-serif italic text-white/90 leading-snug line-clamp-4 drop-shadow-sm">{book.title}</h3>
         </div>
 
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center space-x-6 z-30">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center space-x-4 z-30">
           <button 
             onClick={(e) => { e.stopPropagation(); onOpen(book, false); }} 
             disabled={isTranslating} 
-            title="Open Native"
-            className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
+            title="Open"
+            className="p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
           >
-            <Book strokeWidth={1.5} size={22} />
+            <Book strokeWidth={1.5} size={20} />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onOpen(book, true); }} 
             disabled={isTranslating} 
             title="Translate via Gemini 3.0"
-            className="p-4 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
+            className="p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all disabled:opacity-50"
           >
-            <Languages strokeWidth={1.5} size={22} />
+            <Languages strokeWidth={1.5} size={20} />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onHide(book.id); }} 
+            disabled={isTranslating} 
+            title="Eradicate"
+            className="p-3 rounded-full text-red-400/50 hover:text-red-400 hover:bg-red-400/10 active:scale-95 transition-all disabled:opacity-50"
+          >
+            <Trash2 strokeWidth={1.5} size={20} />
           </button>
         </div>
       </div>
@@ -104,11 +113,16 @@ export default function Hub() {
   const [randomBooks, setRandomBooks] = useState<any[]>([]);
   const [isShuffling, setIsShuffling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const passInputRef = useRef<HTMLInputElement>(null);
+
+  const hiddenBooks = useLiveQuery(() => db.hiddenBooks.toArray()) || [];
 
   const shuffleBooks = () => {
     setIsShuffling(true);
     setTimeout(() => {
-      const shuffled = [...STANDARD_EBOOKS].sort(() => 0.5 - Math.random());
+      const hiddenIds = new Set(hiddenBooks.map(b => b.bookId));
+      const available = STANDARD_EBOOKS.filter(b => !hiddenIds.has(b.id));
+      const shuffled = [...available].sort(() => 0.5 - Math.random());
       setRandomBooks(shuffled.slice(0, 12));
       setIsShuffling(false);
     }, 400); // Give time for exit animation
@@ -118,10 +132,25 @@ export default function Hub() {
     const savedKey = localStorage.getItem('gemini_api_key');
     if (savedKey) { setApiKey(savedKey); setHasKey(true); }
     shuffleBooks();
-  }, []);
+  }, [hiddenBooks.length]);
 
   const handleSaveKey = () => {
     if (apiKey.trim()) { localStorage.setItem('gemini_api_key', apiKey); setHasKey(true); }
+  };
+
+  const handleHide = async (id: string) => {
+    await db.hiddenBooks.add({ bookId: id });
+  };
+
+  const handleDownloadPass = async () => {
+    const identity = await db.identity.toCollection().first();
+    if (!identity) return;
+    const blob = new Blob([JSON.stringify({ address: identity.address, balance: identity.balance })], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pass-${identity.address}.json`;
+    a.click();
   };
 
   const handleLocalImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,11 +160,9 @@ export default function Hub() {
     setIsTranslating('Importing Local Book...');
     try {
       const text = await file.text();
-      // Split into basic paragraphs for the editor
       const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
       const finalHtml = paragraphs.map(p => `<p>${p.replace(/\n/g, ' ')}</p>`).join('');
-      
-      const title = file.name.replace(/\.[^/.]+$/, ""); // remove extension
+      const title = file.name.replace(/\.[^/.]+$/, "");
 
       await db.drafts.add({ 
         title: title, 
@@ -146,7 +173,7 @@ export default function Hub() {
       });
       router.push('/');
     } catch (error) {
-      alert("Failed to read file.");
+      alert(`Error: ${error}`);
     } finally {
       setIsTranslating(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -187,7 +214,6 @@ export default function Hub() {
 
         setIsTranslating(`Gemini 3.0 Translating to ${userLangName}...`);
         
-        // Extract preview HTML to keep it fast
         let previewHtml = rawContent;
         if (previewHtml.length > 3000) {
             const cutIndex = previewHtml.indexOf('</p>', 2500);
@@ -229,30 +255,16 @@ export default function Hub() {
               </div>
             )}
             
-            {/* Local Import Button */}
-            <button 
-              onClick={() => fileInputRef.current?.click()} 
-              className="flex items-center gap-2 p-2 rounded-full hover:bg-black/5 transition-colors"
-              title="Import Local Text File (.txt, .md)"
-            >
-              <Upload strokeWidth={1.5} size={20} />
-            </button>
-            <input 
-              type="file" 
-              accept=".txt,.md" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }} 
-              onChange={handleLocalImport} 
-            />
+            <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full hover:bg-black/5 transition-colors" title="Import Text"><Upload strokeWidth={1.5} size={20} /></button>
+            <input type="file" accept=".txt,.md" ref={fileInputRef} style={{ display: 'none' }} onChange={handleLocalImport} />
 
-            {/* The River Mechanism: Cycle the displayed books */}
+            <button onClick={handleDownloadPass} className="p-2 rounded-full hover:bg-black/5 transition-colors" title="Download Pass"><Download strokeWidth={1.5} size={20} /></button>
+            
             <button 
-              onClick={() => {
-                const shuffled = [...STANDARD_EBOOKS].sort(() => 0.5 - Math.random());
-                setRandomBooks(shuffled.slice(0, 12));
-              }} 
-              className="flex items-center gap-2 p-2 rounded-full hover:bg-black/5 transition-all"
-              title="Flow (Show different texts)"
+              onClick={shuffleBooks} 
+              disabled={isShuffling}
+              className={`flex items-center gap-2 p-2 rounded-full hover:bg-black/5 transition-all ${isShuffling ? 'rotate-180 opacity-50' : ''}`}
+              title="Flow"
             >
               <RefreshCw strokeWidth={1.5} size={20} />
             </button>
@@ -262,14 +274,14 @@ export default function Hub() {
         {isTranslating && (
           <div className="fixed inset-0 z-50 bg-[#FAFAFA]/90 backdrop-blur-md flex flex-col items-center justify-center">
             <Loader2 className="animate-spin mb-8 opacity-30" size={24} />
-            <p className="font-serif italic text-xl text-black/60">{isTranslating}</p>
+            <p className="font-serif italic text-xl text-black/60 text-center px-10">{isTranslating}</p>
           </div>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-8 gap-y-16 pb-20">
           <AnimatePresence mode="popLayout">
             {!isShuffling && randomBooks.map((book) => (
-              <BookCard key={book.id + book.slug} book={book} onOpen={handleOpen} isTranslating={!!isTranslating} />
+              <BookCard key={book.id + book.slug} book={book} onOpen={handleOpen} onHide={handleHide} isTranslating={!!isTranslating} />
             ))}
           </AnimatePresence>
         </div>

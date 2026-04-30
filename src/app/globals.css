@@ -33,6 +33,9 @@
   color: #1a1a1a;
   text-align: justify;
   text-justify: inter-character;
+  /* ゲーム的な最適化: 画面外のレンダリングをサボり、計算コストをゼロにする */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 100px;
 }
 
 .prose h1, .prose h2, .prose h3 {

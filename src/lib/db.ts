@@ -32,12 +32,14 @@ export interface Identity {
 const db = new Dexie('BookhubDB') as Dexie & {
   drafts: EntityTable<Draft, 'id'>;
   identity: EntityTable<Identity, 'id'>;
+  hiddenBooks: EntityTable<{ id: string; bookId: string; }, 'id'>;
 };
 
-// バージョン3: Identity（通手形）を追加
-db.version(3).stores({
+// バージョン4: hiddenBooksを追加
+db.version(4).stores({
   drafts: '++id, title, author, updatedAt, isCommitted',
-  identity: '++id, address'
+  identity: '++id, address',
+  hiddenBooks: '++id, bookId'
 });
 
 export { db };
