@@ -58,9 +58,24 @@ export default function Editor({ initialContent = '', onUpdate, editable = true 
 
   if (!mounted) return null;
 
+  // In Read Mode, render pure HTML instead of the Tiptap editor instance.
+  // Chrome's built-in translation frequently fails on contenteditable=false 
+  // or ProseMirror internal DOM structures. Rendering raw HTML fixes this.
+  if (!editable) {
+    return (
+      <div className="relative w-full mt-10">
+        <div 
+          className="prose prose-stone prose-lg dark:prose-invert min-h-[50vh] max-w-none text-gray-800 select-text"
+          dangerouslySetInnerHTML={{ __html: initialContent }}
+          translate="yes"
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="relative w-full mt-10">
-      {editor && editable && (
+    <div className="relative w-full mt-10" translate="no">
+      {editor && (
         <BubbleMenu
           editor={editor}
           className="flex items-center space-x-1 bg-white shadow-sm border border-gray-100 rounded-full px-3 py-1.5 text-gray-500 backdrop-blur-md bg-white/90"
