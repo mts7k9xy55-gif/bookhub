@@ -9,37 +9,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing title' }, { status: 400 });
     }
 
-    // 1. Try Standard Ebooks (SE) first for high-quality typography
+    // 1. Try Standard Ebooks (SE) first
     if (slug && !slug.startsWith('pg/')) {
       const seUrl = `https://standardebooks.org/ebooks/${slug}/text/single-page`;
       const seRes = await fetch(seUrl);
       if (seRes.ok) {
         let htmlText = await seRes.text();
-        if (htmlText) {
-            // Extract the whole <main> or content area, preserving more structure
-            const contentMatch = htmlText.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
-            if (contentMatch) {
-                let content = contentMatch[1];
-                // Remove interactive/navigation elements but KEEP structural ones (section, h2, etc.)
-                content = content.replace(/<nav[^>]*>[\s\S]*?<\/nav>/ig, '');
-                content = content.replace(/<footer[^>]*>[\s\S]*?<\/footer>/ig, '');
-                content = content.replace(/<aside[^>]*>[\s\S]*?<\/aside>/ig, '');
-                // Standard Ebooks uses beautiful typography classes; let's keep the tags clean but keep the semantic structure
-                return NextResponse.json({ content });
-            }
+        const contentMatch = htmlText.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+        if (contentMatch) {
+            let content = contentMatch[1];
+            content = content.replace(/<nav[^>]*>[\s\S]*?<\/nav>/ig, '');
+            content = content.replace(/<footer[^>]*>[\s\S]*?<\/footer>/ig, '');
+            content = content.replace(/<aside[^>]*>[\s\S]*?<\/aside>/ig, '');
+            return NextResponse.json({ content });
         }
       }
     }
 
-    // 2. Fallback to Project Gutenberg via Gutendex
+    // 2. Fallback to Project Gutenberg
     const query = encodeURIComponent(`${title} ${author || ''}`);
     const searchRes = await fetch(`https://gutendex.com/books?search=${query}`);
     const searchData = await searchRes.json();
     const book = searchData.results[0];
     
-    if (!book) {
-      throw new Error('Book not found.');
-    }
+    if (!book) throw new Error('Book not found.');
 
     const htmlUrl = book.formats['text/html'] || book.formats['text/html; charset=utf-8'];
     if (htmlUrl) {
@@ -48,14 +41,14 @@ export async function POST(request: Request) {
       const bodyMatch = htmlText.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
       if (bodyMatch) {
         let content = bodyMatch[1];
-        // Clean up PG boilerplate
+        // Clean up boilerplate
         content = content.replace(/<section[^>]*id="pg-header"[^>]*>[\s\S]*?<\/section>/ig, '');
         content = content.replace(/<section[^>]*id="pg-footer"[^>]*>[\s\S]*?<\/section>/ig, '');
         return NextResponse.json({ content });
       }
     }
 
-    // Fallback to plain text
+    // Fallback to raw text
     let textUrl = book.formats['text/plain; charset=utf-8'] || `https://www.gutenberg.org/cache/epub/${book.id}/pg${book.id}.txt`;
     const textRes = await fetch(textUrl);
     const rawText = await textRes.text();

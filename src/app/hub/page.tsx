@@ -132,24 +132,23 @@ export default function Hub() {
   const handleOpen = async (book: any) => {
     setIsOpening(book.title);
     try {
-      // 既存の翻訳があればそのまま開くように、Draftの存在確認
-      const existingDraft = await db.drafts.where('title').equals(book.title).first();
-      if (!existingDraft) {
-        const res = await fetch('/api/fetch-book', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: book.title, author: book.author, slug: book.slug })
-        });
-        const { content } = await res.json();
-        await db.drafts.add({ 
-            title: book.title, 
-            author: book.author, 
-            content, 
-            updatedAt: new Date(), 
-            isCommitted: false,
-            slug: book.slug
-        });
-      }
+      // 過去の「川は続く」ゴミデータを完全に消去するために、常に新しく取得する
+      await db.drafts.where('title').equals(book.title).delete();
+
+      const res = await fetch('/api/fetch-book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: book.title, author: book.author, slug: book.slug })
+      });
+      const { content } = await res.json();
+      await db.drafts.add({ 
+          title: book.title, 
+          author: book.author, 
+          content, 
+          updatedAt: new Date(), 
+          isCommitted: false,
+          slug: book.slug
+      });
       router.push('/');
     } catch (e) {
       alert("Failed to open book.");
