@@ -84,51 +84,58 @@ export default function Home() {
     }
   };
 
+  // 言語設定を永続化
+  useEffect(() => {
+    const savedLang = localStorage.getItem('bookhub-language') as 'en' | 'ja';
+    if (savedLang) setLanguage(savedLang);
+  }, []);
+
   const handleLanguageSwitch = async (lang: 'en' | 'ja') => {
     setLanguage(lang);
+    localStorage.setItem('bookhub-language', lang);
     if (lang === 'ja' && translatedChunks.length === 0) {
-      // データベースからキャッシュをチェック
       if (activeDraft?.translatedContent) {
         setTranslatedChunks([activeDraft.translatedContent]);
         return;
       }
-
       setIsTranslating(true);
       const firstChunkTranslated = await translateChunk(displayChunks[0]);
       setTranslatedChunks([firstChunkTranslated]);
-      
-      // 最初の一塊だけとりあえず保存
-      if (draftId) {
-        await db.drafts.update(draftId, { translatedContent: firstChunkTranslated });
-      }
+      if (draftId) await db.drafts.update(draftId, { translatedContent: firstChunkTranslated });
       setIsTranslating(false);
     }
   };
 
-  const loadMore = useCallback(async () => {
-    if (chunkIndex * CHUNK_SIZE < allParagraphs.length) {
-      const nextChunk = allParagraphs.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE).join('');
-      
-      let nextTranslated = "";
-      if (language === 'ja') {
-        setIsTranslating(true);
-        nextTranslated = await translateChunk(nextChunk);
-        setIsTranslating(false);
+  // --- Background Pre-translation (Buffering) ---
+  useEffect(() => {
+    const bufferNext = async () => {
+      // 日本語モードかつ、まだ翻訳していない続きがある場合
+      if (language === 'ja' && chunkIndex * CHUNK_SIZE < allParagraphs.length && !isTranslating) {
+        const nextChunk = allParagraphs.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE).join('');
         
-        // 翻訳済みの全体を更新して保存
+        setIsTranslating(true);
+        const nextTranslated = await translateChunk(nextChunk);
+        
+        setDisplayChunks(prev => [...prev, nextChunk]);
+        setTranslatedChunks(prev => [...prev, nextTranslated]);
+        setChunkIndex(prev => prev + 1);
+
         if (draftId && activeDraft) {
             const currentFullJa = (activeDraft.translatedContent || "") + nextTranslated;
             await db.drafts.update(draftId, { translatedContent: currentFullJa });
         }
+        setIsTranslating(false);
       }
-      
-      setDisplayChunks(prev => [...prev, nextChunk]);
-      if (nextTranslated) {
-        setTranslatedChunks(prev => [...prev, nextTranslated]);
-      }
-      setChunkIndex(prev => prev + 1);
-    }
-  }, [chunkIndex, allParagraphs, language, draftId, activeDraft]);
+    };
+
+    // ユーザーが底に近づく前に、少しずつ裏で翻訳を進める
+    const timer = setTimeout(bufferNext, 1000); 
+    return () => clearTimeout(timer);
+  }, [language, chunkIndex, allParagraphs, isTranslating, draftId, activeDraft]);
+
+  const loadMore = useCallback(() => {
+      // スクロール読み込みはバッファリング useEffect が兼任する
+  }, []);
 
   // スクロール監視
   useEffect(() => {
