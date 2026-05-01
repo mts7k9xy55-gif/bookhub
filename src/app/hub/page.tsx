@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Loader2, Book, Search, X, RefreshCw, Trash2, RotateCcw, BookOpen } from 'lucide-react';
+import { ArrowLeft, Loader2, Book, Search, X, RefreshCw, Trash2, RotateCcw, BookOpen, EyeOff } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -132,9 +132,7 @@ export default function Hub() {
   const handleOpen = async (book: any) => {
     setIsOpening(book.title);
     try {
-      // 過去の「川は続く」ゴミデータを完全に消去するために、常に新しく取得する
       await db.drafts.where('title').equals(book.title).delete();
-
       const res = await fetch('/api/fetch-book', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -164,7 +162,7 @@ export default function Hub() {
 
   const handleRestore = async (id: number) => {
     await db.hiddenBooks.delete(id);
-    shuffle(); // プールを再生成
+    shuffle();
   };
 
   const filteredLocal = randomBooks.filter(b => 
@@ -191,7 +189,7 @@ export default function Hub() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-black/20 group-focus-within:text-black/40" size={16} />
             <input 
               type="text"
-              placeholder="Filter pool or search SE/PG..."
+              placeholder="Search author or title..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-full border border-black/5 bg-white py-2.5 pl-10 pr-10 outline-none focus:border-black/10 transition-all font-serif italic text-base shadow-sm"
@@ -205,7 +203,6 @@ export default function Hub() {
           </div>
         </header>
 
-        {/* Dense Grid */}
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
           <AnimatePresence mode="popLayout">
             {(searchQuery ? [...filteredLocal, ...remoteResults] : randomBooks).map((book) => (
@@ -214,10 +211,9 @@ export default function Hub() {
           </AnimatePresence>
         </div>
 
-        {/* Trash Box Modal */}
         <AnimatePresence>
             {showTrash && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl p-8 overflow-y-auto">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl p-8 overflow-y-auto text-left">
                     <div className="max-w-4xl mx-auto">
                         <header className="flex justify-between items-center mb-12">
                             <h2 className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-30">Trash Box (Hidden Pool)</h2>
