@@ -87,9 +87,20 @@ export default function Home() {
   const handleLanguageSwitch = async (lang: 'en' | 'ja') => {
     setLanguage(lang);
     if (lang === 'ja' && translatedChunks.length === 0) {
+      // データベースからキャッシュをチェック
+      if (activeDraft?.translatedContent) {
+        setTranslatedChunks([activeDraft.translatedContent]);
+        return;
+      }
+
       setIsTranslating(true);
       const firstChunkTranslated = await translateChunk(displayChunks[0]);
       setTranslatedChunks([firstChunkTranslated]);
+      
+      // 最初の一塊だけとりあえず保存
+      if (draftId) {
+        await db.drafts.update(draftId, { translatedContent: firstChunkTranslated });
+      }
       setIsTranslating(false);
     }
   };
@@ -103,6 +114,12 @@ export default function Home() {
         setIsTranslating(true);
         nextTranslated = await translateChunk(nextChunk);
         setIsTranslating(false);
+        
+        // 翻訳済みの全体を更新して保存
+        if (draftId && activeDraft) {
+            const currentFullJa = (activeDraft.translatedContent || "") + nextTranslated;
+            await db.drafts.update(draftId, { translatedContent: currentFullJa });
+        }
       }
       
       setDisplayChunks(prev => [...prev, nextChunk]);
@@ -111,7 +128,7 @@ export default function Home() {
       }
       setChunkIndex(prev => prev + 1);
     }
-  }, [chunkIndex, allParagraphs, language]);
+  }, [chunkIndex, allParagraphs, language, draftId, activeDraft]);
 
   // スクロール監視
   useEffect(() => {

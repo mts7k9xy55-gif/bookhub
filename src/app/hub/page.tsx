@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Loader2, Book, Search, X, RefreshCw, EyeOff } from 'lucide-react';
+import { ArrowLeft, Loader2, Book, Search, X, RefreshCw, Trash2, RotateCcw, BookOpen } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -59,21 +59,21 @@ const getGradient = (title: string) => {
   return `linear-gradient(135deg, hsl(${hue}, 10%, 40%), hsl(${hue + 40}, 15%, 20%))`;
 };
 
-function BookCard({ book, onOpen, onHide, isOpening }: { book: any, onOpen: (book: any) => void, onHide: (id: string) => void, isOpening: boolean }) {
+function BookCard({ book, onOpen, onHide, isOpening }: { book: any, onOpen: (book: any) => void, onHide: (id: string, title: string, author: string) => void, isOpening: boolean }) {
   const gradient = getGradient(book.title);
   return (
-    <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="group relative aspect-[2/3] cursor-pointer overflow-hidden border border-black/5" onClick={() => onOpen(book)}>
+    <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="group relative aspect-[3/4] cursor-pointer overflow-hidden border border-black/5 rounded-sm" onClick={() => onOpen(book)}>
       <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105" style={{ background: gradient }} />
-      <div className="relative z-10 flex h-full flex-col items-center justify-center p-6 text-center">
-        <p className="mb-2 text-[8px] font-medium tracking-[0.3em] uppercase text-white/40">{book.author}</p>
-        <h3 className="font-serif text-sm italic leading-snug text-white/90 line-clamp-3">{book.title}</h3>
+      <div className="relative z-10 flex h-full flex-col items-center justify-center p-4 text-center">
+        <p className="mb-1 text-[7px] font-medium tracking-[0.2em] uppercase text-white/30">{book.author}</p>
+        <h3 className="font-serif text-[11px] italic leading-tight text-white/80 line-clamp-3">{book.title}</h3>
       </div>
-      <div className="absolute inset-0 z-20 bg-black/60 opacity-0 transition-opacity duration-500 group-hover:opacity-100 flex items-center justify-center gap-8">
-        <button onClick={(e) => { e.stopPropagation(); onOpen(book); }} disabled={isOpening} className="p-4 rounded-full hover:bg-white/10 text-white/80 active:scale-90 transition-all">
-          <Book size={28} strokeWidth={1} />
+      <div className="absolute inset-0 z-20 bg-black/70 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center justify-center gap-4">
+        <button onClick={(e) => { e.stopPropagation(); onOpen(book); }} disabled={isOpening} className="p-3 rounded-full hover:bg-white/10 text-white/80 active:scale-90 transition-all">
+          <Book size={20} strokeWidth={1} />
         </button>
-        <button onClick={(e) => { e.stopPropagation(); onHide(book.id); }} disabled={isOpening} className="p-4 rounded-full hover:bg-white/10 text-white/30 hover:text-red-400 active:scale-90 transition-all">
-          <EyeOff size={24} strokeWidth={1} />
+        <button onClick={(e) => { e.stopPropagation(); onHide(book.id, book.title, book.author); }} disabled={isOpening} className="p-3 rounded-full hover:bg-white/10 text-white/30 hover:text-red-400 active:scale-90 transition-all">
+          <Trash2 size={18} strokeWidth={1} />
         </button>
       </div>
     </motion.div>
@@ -87,6 +87,7 @@ export default function Hub() {
   const [remoteResults, setRemoteResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isOpening, setIsOpening] = useState<string | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
 
   const hiddenBooks = useLiveQuery(() => db.hiddenBooks.toArray()) || [];
 
@@ -100,9 +101,7 @@ export default function Hub() {
   }, [hiddenBooks]);
 
   useEffect(() => {
-    if (randomBooks.length === 0) {
-      shuffle();
-    }
+    if (randomBooks.length === 0) shuffle();
   }, [randomBooks.length, shuffle]);
 
   useEffect(() => {
@@ -133,20 +132,24 @@ export default function Hub() {
   const handleOpen = async (book: any) => {
     setIsOpening(book.title);
     try {
-      await db.drafts.where('title').equals(book.title).delete();
-      const res = await fetch('/api/fetch-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: book.title, author: book.author, slug: book.slug })
-      });
-      const { content } = await res.json();
-      await db.drafts.add({ 
-        title: book.title, 
-        author: book.author, 
-        content, 
-        updatedAt: new Date(), 
-        isCommitted: false 
-      });
+      // 既存の翻訳があればそのまま開くように、Draftの存在確認
+      const existingDraft = await db.drafts.where('title').equals(book.title).first();
+      if (!existingDraft) {
+        const res = await fetch('/api/fetch-book', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: book.title, author: book.author, slug: book.slug })
+        });
+        const { content } = await res.json();
+        await db.drafts.add({ 
+            title: book.title, 
+            author: book.author, 
+            content, 
+            updatedAt: new Date(), 
+            isCommitted: false,
+            slug: book.slug
+        });
+      }
       router.push('/');
     } catch (e) {
       alert("Failed to open book.");
@@ -155,9 +158,14 @@ export default function Hub() {
     }
   };
 
-  const handleHide = async (id: string) => {
-    await db.hiddenBooks.add({ bookId: id });
+  const handleHide = async (id: string, title: string, author: string) => {
+    await db.hiddenBooks.add({ bookId: id, title, author });
     setRandomBooks(prev => prev.filter(b => b.id !== id));
+  };
+
+  const handleRestore = async (id: number) => {
+    await db.hiddenBooks.delete(id);
+    shuffle(); // プールを再生成
   };
 
   const filteredLocal = randomBooks.filter(b => 
@@ -167,43 +175,73 @@ export default function Hub() {
 
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#1a1a1a] selection:bg-gray-200">
-      <div className="mx-auto max-w-6xl px-6 py-16">
+      <div className="mx-auto max-w-7xl px-4 py-12">
         
-        <header className="mb-20 flex flex-col md:flex-row items-center justify-between gap-8 opacity-40 hover:opacity-100 transition-opacity duration-500">
-          <div className="flex items-center gap-6">
+        <header className="mb-16 flex flex-col md:flex-row items-center justify-between gap-6 opacity-40 hover:opacity-100 transition-all duration-500">
+          <div className="flex items-center gap-4">
             <button onClick={shuffle} className="p-2 hover:bg-black/5 rounded-full transition-all" title="Shuffle Pool">
-                <RefreshCw size={20} strokeWidth={1.5} className={isSearching ? 'animate-spin' : ''} />
+                <RefreshCw size={18} strokeWidth={1.5} className={isSearching ? 'animate-spin' : ''} />
             </button>
             <div className="h-4 w-[1px] bg-black/10"></div>
             <Link href="/" className="flex items-center gap-2 p-2 hover:bg-black/5 rounded-full transition-colors" title="My Studio">
-                <BookOpen size={20} strokeWidth={1.5} />
+                <BookOpen size={18} strokeWidth={1.5} />
             </Link>
           </div>
           
-          <div className="relative flex-1 max-w-md w-full group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-black/20 group-focus-within:text-black/40" size={18} />
+          <div className="relative flex-1 max-w-lg w-full group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-black/20 group-focus-within:text-black/40" size={16} />
             <input 
               type="text"
-              placeholder="Search classics..."
+              placeholder="Filter pool or search SE/PG..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-full border border-black/5 bg-white py-3 pl-12 pr-10 outline-none focus:border-black/10 transition-all font-serif italic text-lg"
+              className="w-full rounded-full border border-black/5 bg-white py-2.5 pl-10 pr-10 outline-none focus:border-black/10 transition-all font-serif italic text-base shadow-sm"
             />
-            {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-black/10" size={16} />}
           </div>
 
-          <div className="hidden md:block w-[100px] text-right">
-            <span className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-20">Hub</span>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setShowTrash(!showTrash)} className={`p-2 rounded-full transition-all ${hiddenBooks.length > 0 ? 'text-red-400 opacity-100' : 'opacity-20'}`} title="Trash Box">
+                <Trash2 size={18} strokeWidth={1.5} />
+            </button>
           </div>
         </header>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        {/* Dense Grid */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
           <AnimatePresence mode="popLayout">
             {(searchQuery ? [...filteredLocal, ...remoteResults] : randomBooks).map((book) => (
               <BookCard key={book.id} book={book} onOpen={handleOpen} onHide={handleHide} isOpening={!!isOpening} />
             ))}
           </AnimatePresence>
         </div>
+
+        {/* Trash Box Modal */}
+        <AnimatePresence>
+            {showTrash && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl p-8 overflow-y-auto">
+                    <div className="max-w-4xl mx-auto">
+                        <header className="flex justify-between items-center mb-12">
+                            <h2 className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-30">Trash Box (Hidden Pool)</h2>
+                            <button onClick={() => setShowTrash(false)} className="p-2 hover:bg-black/5 rounded-full"><X size={20} className="opacity-20" /></button>
+                        </header>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            {hiddenBooks.map(book => (
+                                <div key={book.id} className="flex items-center justify-between p-4 bg-[#FAFAFA] border border-black/5">
+                                    <div className="flex flex-col gap-1 overflow-hidden">
+                                        <p className="font-serif italic text-xs truncate">{book.title}</p>
+                                        <p className="text-[8px] opacity-30 uppercase">{book.author}</p>
+                                    </div>
+                                    <button onClick={() => handleRestore(book.id!)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-full transition-colors">
+                                        <RotateCcw size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                            {hiddenBooks.length === 0 && <p className="col-span-full text-center opacity-30 italic text-sm">Trash is empty.</p>}
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
 
         {isOpening && (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/90 backdrop-blur-md">
