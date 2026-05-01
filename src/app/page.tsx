@@ -12,6 +12,7 @@ export default function Home() {
   const [draftId, setDraftId] = useState<number | null>(null);
   const [localContent, setLocalContent] = useState<string>('');
   const [isReadMode, setIsReadMode] = useState(true);
+  const [language, setLanguage] = useState<'en' | 'ja'>('en');
 
   const drafts = useLiveQuery(() => 
     db.drafts.orderBy('updatedAt').reverse().toArray()
@@ -50,30 +51,67 @@ export default function Home() {
 
   const activeDraft = drafts?.find(d => d.id === draftId);
 
-  // --- Progressive Loading Logic ---
+  // --- Progressive Loading & Translation Logic ---
   const [displayChunks, setDisplayChunks] = useState<string[]>([]);
+  const [translatedChunks, setTranslatedChunks] = useState<string[]>([]);
   const [allParagraphs, setAllParagraphs] = useState<string[]>([]);
   const [chunkIndex, setChunkIndex] = useState(0);
-  const CHUNK_SIZE = 30; // 30段落ずつ読み込む
+  const [isTranslating, setIsTranslating] = useState(false);
+  const CHUNK_SIZE = 30;
 
   useEffect(() => {
     if (activeDraft?.content) {
-      // HTMLを段落単位（<p>, <h1>, <h2>等）で分割する
-      // シンプルな正規表現分割
       const parts = activeDraft.content.match(/<(p|h1|h2|h3|blockquote)[^>]*>([\s\S]*?)<\/\1>/gi) || [activeDraft.content];
       setAllParagraphs(parts);
       setDisplayChunks([parts.slice(0, CHUNK_SIZE).join('')]);
+      setTranslatedChunks([]);
       setChunkIndex(1);
+      setLanguage('en');
     }
   }, [activeDraft?.content]);
 
-  const loadMore = useCallback(() => {
+  const translateChunk = async (html: string) => {
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: html })
+      });
+      const data = await res.json();
+      return data.translatedText;
+    } catch (e) {
+      return "Translation failed.";
+    }
+  };
+
+  const handleLanguageSwitch = async (lang: 'en' | 'ja') => {
+    setLanguage(lang);
+    if (lang === 'ja' && translatedChunks.length === 0) {
+      setIsTranslating(true);
+      const firstChunkTranslated = await translateChunk(displayChunks[0]);
+      setTranslatedChunks([firstChunkTranslated]);
+      setIsTranslating(false);
+    }
+  };
+
+  const loadMore = useCallback(async () => {
     if (chunkIndex * CHUNK_SIZE < allParagraphs.length) {
       const nextChunk = allParagraphs.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE).join('');
+      
+      let nextTranslated = "";
+      if (language === 'ja') {
+        setIsTranslating(true);
+        nextTranslated = await translateChunk(nextChunk);
+        setIsTranslating(false);
+      }
+      
       setDisplayChunks(prev => [...prev, nextChunk]);
+      if (nextTranslated) {
+        setTranslatedChunks(prev => [...prev, nextTranslated]);
+      }
       setChunkIndex(prev => prev + 1);
     }
-  }, [chunkIndex, allParagraphs]);
+  }, [chunkIndex, allParagraphs, language]);
 
   // スクロール監視
   useEffect(() => {
@@ -87,7 +125,7 @@ export default function Home() {
   }, [loadMore]);
 
   return (
-    <main lang="en" className={`min-h-screen transition-colors duration-1000 font-sans selection:bg-gray-200 flex flex-col items-start justify-start ${isReadMode ? 'bg-[#FDFBF7]' : 'bg-[#FFFFFF]'}`}>
+    <main lang={language} className={`min-h-screen transition-colors duration-1000 font-sans selection:bg-gray-200 flex flex-col items-start justify-start ${isReadMode ? 'bg-[#FDFBF7]' : 'bg-[#FFFFFF]'}`}>
       
       <header className="w-full max-w-4xl flex justify-between items-center px-8 sm:px-20 py-10 transition-opacity duration-700 opacity-40 hover:opacity-100 focus-within:opacity-100">
         <div className="flex items-center gap-6">
@@ -95,9 +133,17 @@ export default function Home() {
                 <Search strokeWidth={1.5} size={20} />
             </Link>
             <div className="h-4 w-[1px] bg-black/10"></div>
-            <span className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-40">
-                {isReadMode ? 'Read Mode' : 'Fork Mode'}
-            </span>
+            <div className="flex items-center bg-black/5 rounded-full p-1">
+                <button 
+                    onClick={() => handleLanguageSwitch('en')}
+                    className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all ${language === 'en' ? 'bg-white text-black shadow-sm' : 'text-black/40'}`}
+                >En</button>
+                <button 
+                    onClick={() => handleLanguageSwitch('ja')}
+                    className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all ${language === 'ja' ? 'bg-white text-black shadow-sm' : 'text-black/40'}`}
+                >Jp</button>
+            </div>
+            {isTranslating && <Loader2 size={12} className="animate-spin opacity-40" />}
         </div>
 
         <div className="flex items-center gap-4">
@@ -112,15 +158,15 @@ export default function Home() {
         </div>
       </header>
 
-      <article lang="en" className="w-full max-w-4xl px-8 sm:px-20 mt-8 mb-40 text-left">
+      <article lang={language} className={`w-full max-w-4xl px-8 sm:px-20 mt-8 mb-40 text-left ${language === 'ja' ? 'font-serif tracking-normal' : 'font-serif tracking-wide'}`}>
         {draftId === null ? (
-          <div className="flex justify-start text-gray-300 mt-20"><Loader2 className="animate-spin" /></div>
+          <div className="flex justify-start text-gray-300 mt-20 ml-20"><Loader2 className="animate-spin" /></div>
         ) : (
-          <div className={`transition-all duration-700 ${isReadMode ? 'font-serif text-[22px] leading-[2.2] text-[#1a1a1a] antialiased tracking-wide' : 'text-[18px] leading-[2.2] text-[#2c2c2c]'}`}>
+          <div className={`transition-all duration-700 ${isReadMode ? 'text-[22px] leading-[2.2] text-[#1a1a1a] antialiased' : 'text-[18px] leading-[2.2] text-[#2c2c2c]'}`}>
             {isReadMode ? (
               /* Static HTML rendering in chunks for stable translation and performance */
               <div className="prose prose-stone prose-lg max-w-none flex flex-col gap-0 [&_p]:mb-8 [&_h1]:mb-12 [&_h1]:mt-24 [&_h2]:mt-20 [&_h2]:mb-8 [&_blockquote]:border-l-2 [&_blockquote]:pl-8 [&_blockquote]:italic [&_blockquote]:opacity-60">
-                {displayChunks.map((chunk, i) => (
+                {(language === 'ja' ? translatedChunks : displayChunks).map((chunk, i) => (
                   <div 
                     key={i} 
                     className="book-chunk"
@@ -129,6 +175,7 @@ export default function Home() {
                 ))}
               </div>
             ) : (
+
               <Editor initialContent={activeDraft?.content || ''} onUpdate={handleUpdate} editable={true} />
             )}
           </div>
