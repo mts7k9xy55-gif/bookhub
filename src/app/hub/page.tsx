@@ -64,16 +64,16 @@ function BookCard({ book, onOpen, onHide, isOpening }: { book: any, onOpen: (boo
   return (
     <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="group relative aspect-[3/4] cursor-pointer overflow-hidden border border-black/5 rounded-sm" onClick={() => onOpen(book)}>
       <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105" style={{ background: gradient }} />
-      <div className="relative z-10 flex h-full flex-col items-center justify-center p-4 text-center">
-        <p className="mb-1 text-[7px] font-medium tracking-[0.2em] uppercase text-white/30">{book.author}</p>
-        <h3 className="font-serif text-[11px] italic leading-tight text-white/80 line-clamp-3">{book.title}</h3>
+      <div className="relative z-10 flex h-full flex-col items-center justify-center p-3 text-center">
+        <p className="mb-1 text-[6px] font-medium tracking-[0.2em] uppercase text-white/30 truncate w-full px-2">{book.author}</p>
+        <h3 className="font-serif text-[10px] italic leading-tight text-white/80 line-clamp-3 px-2">{book.title}</h3>
       </div>
-      <div className="absolute inset-0 z-20 bg-black/70 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center justify-center gap-4">
-        <button onClick={(e) => { e.stopPropagation(); onOpen(book); }} disabled={isOpening} className="p-3 rounded-full hover:bg-white/10 text-white/80 active:scale-90 transition-all">
-          <Book size={20} strokeWidth={1} />
+      <div className="absolute inset-0 z-20 bg-black/70 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center justify-center gap-3">
+        <button onClick={(e) => { e.stopPropagation(); onOpen(book); }} disabled={isOpening} className="p-2.5 rounded-full hover:bg-white/10 text-white/80 active:scale-90 transition-all">
+          <Book size={18} strokeWidth={1} />
         </button>
-        <button onClick={(e) => { e.stopPropagation(); onHide(book.id, book.title, book.author); }} disabled={isOpening} className="p-3 rounded-full hover:bg-white/10 text-white/30 hover:text-red-400 active:scale-90 transition-all">
-          <Trash2 size={18} strokeWidth={1} />
+        <button onClick={(e) => { e.stopPropagation(); onHide(book.id, book.title, book.author); }} disabled={isOpening} className="p-2.5 rounded-full hover:bg-white/10 text-white/30 hover:text-red-400 active:scale-90 transition-all">
+          <Trash2 size={16} strokeWidth={1} />
         </button>
       </div>
     </motion.div>
@@ -95,7 +95,7 @@ export default function Hub() {
     const hiddenIds = new Set(hiddenBooks.map(h => h.bookId));
     const available = STANDARD_EBOOKS.filter(b => !hiddenIds.has(b.id));
     const shuffled = [...available].sort(() => 0.5 - Math.random());
-    setRandomBooks(shuffled.slice(0, 48));
+    setRandomBooks(shuffled.slice(0, 60)); // さらに表示数を増やす
     setSearchQuery('');
     setRemoteResults([]);
   }, [hiddenBooks]);
@@ -132,21 +132,24 @@ export default function Hub() {
   const handleOpen = async (book: any) => {
     setIsOpening(book.title);
     try {
-      await db.drafts.where('title').equals(book.title).delete();
-      const res = await fetch('/api/fetch-book', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: book.title, author: book.author, slug: book.slug })
-      });
-      const { content } = await res.json();
-      await db.drafts.add({ 
-          title: book.title, 
-          author: book.author, 
-          content, 
-          updatedAt: new Date(), 
-          isCommitted: false,
-          slug: book.slug
-      });
+      // 既存の翻訳があればそのまま開くように、Draftの存在確認
+      const existingDraft = await db.drafts.where('title').equals(book.title).first();
+      if (!existingDraft) {
+        const res = await fetch('/api/fetch-book', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: book.title, author: book.author, slug: book.slug })
+        });
+        const { content } = await res.json();
+        await db.drafts.add({ 
+            title: book.title, 
+            author: book.author, 
+            content, 
+            updatedAt: new Date(), 
+            isCommitted: false,
+            slug: book.slug
+        });
+      }
       router.push('/');
     } catch (e) {
       alert("Failed to open book.");
@@ -172,9 +175,9 @@ export default function Hub() {
 
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#1a1a1a] selection:bg-gray-200">
-      <div className="mx-auto max-w-7xl px-4 py-12">
+      <div className="mx-auto max-w-[1600px] px-6 py-10">
         
-        <header className="mb-16 flex flex-col md:flex-row items-center justify-between gap-6 opacity-40 hover:opacity-100 transition-all duration-500">
+        <header className="mb-12 flex flex-col md:flex-row items-center justify-between gap-6 opacity-40 hover:opacity-100 transition-all duration-500">
           <div className="flex items-center gap-4">
             <button onClick={shuffle} className="p-2 hover:bg-black/5 rounded-full transition-all" title="Shuffle Pool">
                 <RefreshCw size={18} strokeWidth={1.5} className={isSearching ? 'animate-spin' : ''} />
@@ -185,14 +188,14 @@ export default function Hub() {
             </Link>
           </div>
           
-          <div className="relative flex-1 max-w-lg w-full group">
+          <div className="relative flex-1 max-w-xl w-full group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-black/20 group-focus-within:text-black/40" size={16} />
             <input 
               type="text"
-              placeholder="Search author or title..."
+              placeholder="Search classics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-full border border-black/5 bg-white py-2.5 pl-10 pr-10 outline-none focus:border-black/10 transition-all font-serif italic text-base shadow-sm"
+              className="w-full rounded-full border border-black/5 bg-white py-2 pl-10 pr-10 outline-none focus:border-black/10 transition-all font-serif italic text-base shadow-sm"
             />
           </div>
 
@@ -203,7 +206,8 @@ export default function Hub() {
           </div>
         </header>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
+        {/* Ultra Dense Grid: PCで12列、モバイルで3列 */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 gap-2">
           <AnimatePresence mode="popLayout">
             {(searchQuery ? [...filteredLocal, ...remoteResults] : randomBooks).map((book) => (
               <BookCard key={book.id} book={book} onOpen={handleOpen} onHide={handleHide} isOpening={!!isOpening} />
@@ -216,7 +220,7 @@ export default function Hub() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl p-8 overflow-y-auto text-left">
                     <div className="max-w-4xl mx-auto">
                         <header className="flex justify-between items-center mb-12">
-                            <h2 className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-30">Trash Box (Hidden Pool)</h2>
+                            <h2 className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-30">Trash Box</h2>
                             <button onClick={() => setShowTrash(false)} className="p-2 hover:bg-black/5 rounded-full"><X size={20} className="opacity-20" /></button>
                         </header>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -241,7 +245,7 @@ export default function Hub() {
         {isOpening && (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/90 backdrop-blur-md">
                 <Loader2 className="mb-4 animate-spin text-black/20" size={32} />
-                <p className="font-serif italic text-black/40">Opening "{isOpening}"</p>
+                <p className="font-serif italic text-black/40">Summoning "{isOpening}"</p>
             </div>
         )}
       </div>
